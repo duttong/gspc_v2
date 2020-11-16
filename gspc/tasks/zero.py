@@ -9,18 +9,14 @@ from .sample import *
 from .flow import *
 from .vacuum import *
 
-INITIAL_FLOW = 3
+INITIAL_FLOW = 6.9
 SAMPLE_FLOW = 7.2
 UPPER_SAMPLE_FLOW = 1.3
 LOWER_SAMPLE_FLOW = 0.5
 LOW_FLOW_THRESHOLD = 0.2
 
 
-class Flask(Sample):
-    def __init__(self, selection):
-        Sample.__init__(self)
-        self._selection = selection
-
+class Zero(Sample):
     def schedule(self, interface: Interface, schedule: Execute, origin: float) -> typing.List[Runnable]:
         sample_origin = origin + SAMPLE_OPEN_AT
         sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
@@ -29,7 +25,7 @@ class Flask(Sample):
                                             SAMPLE_FLOW, LOWER_SAMPLE_FLOW, UPPER_SAMPLE_FLOW)
 
         async def low_flow_detected():
-            await maintain_sample_flow.stop()
+            await maintain_sample_flow.stop(),
             await interface.set_vacuum(False)
 
         result = Sample.schedule(self, interface, schedule, origin) + [
@@ -49,20 +45,19 @@ class Flask(Sample):
         ]
         if origin > 0.0:
             result += [
-                SelectSource(interface, schedule, origin - 814, self._selection),
+                SelectSource(interface, schedule, origin - 814, 9),
                 FeedbackFlow(interface, schedule, origin - 813, INITIAL_FLOW),
 
-                SelectSource(interface, schedule, origin - 435, self._selection),
-                FeedbackFlow(interface, schedule, origin - 425, SAMPLE_FLOW),
-
                 OverflowOn(interface, schedule, origin - 180),
-                OverflowOff(interface, schedule, origin - 130),
+                HighPressureOn(interface, schedule, origin - 180),
 
                 FeedbackFlow(interface, schedule, origin + 6, SAMPLE_FLOW),
             ]
         else:
             result += [
-                SelectSource(interface, schedule, origin, self._selection),
+                OverflowOn(interface, schedule, origin),
+                SelectSource(interface, schedule, origin, 9),
+                HighPressureOn(interface, schedule, origin),
 
                 FeedbackFlow(interface, schedule, origin + 6, INITIAL_FLOW),
             ]

@@ -1,4 +1,3 @@
-import time
 import logging
 import asyncio
 from gspc.hw.interface import Interface
@@ -7,59 +6,46 @@ from gspc.schedule import Runnable, Execute
 _LOGGER = logging.getLogger(__name__)
 
 
-class SwitchToFlask(Runnable):
-    """Change to a flask."""
+class OverflowOn(Runnable):
+    async def execute(self):
+        await self.interface.set_overflow(True)
+        _LOGGER.debug("Overflow valve ON")
 
-    def __init__(self, interface: Interface, schedule: Execute, select):
-        Runnable.__init__(self, interface, schedule)
-        self.select = select
+
+class OverflowOff(Runnable):
+    async def execute(self):
+        await self.interface.set_overflow(False)
+        _LOGGER.debug("Overflow valve OFF")
+
+
+class HighPressureOn(Runnable):
+    async def execute(self):
+        await self.interface.set_high_pressure_valve(True)
+        _LOGGER.debug("High pressure valve ON")
+
+
+class HighPressureOff(Runnable):
+    async def execute(self):
+        await self.interface.set_high_pressure_valve(False)
+        _LOGGER.debug("High pressure valve OFF")
+
+
+class LoadSwitch(Runnable):
+    async def _cycle_valve(self):
+        await self.interface.set_load(True)
+        _LOGGER.info("Valve switched to load")
+        await asyncio.sleep(1)
+        await self.interface.set_load(False)
 
     async def execute(self):
-        _LOGGER.info(f"Changing to flask {self.select}")
-        await self.interface.select_flask(self.select)
-
-    async def active_description(self) -> str:
-        return f"Operate valve"
+        await self.schedule.start_background(self._cycle_valve())
 
 
-class SwitchToTank(Runnable):
-    """Change to a tank."""
-
-    def __init__(self, interface: Interface, schedule: Execute, select):
-        Runnable.__init__(self, interface, schedule)
-        self.select = select
+class SelectSource(Runnable):
+    def __init__(self, interface: Interface, schedule: Execute, origin: float, source: int):
+        Runnable.__init__(self, interface, schedule, origin)
+        self._source = source
 
     async def execute(self):
-        _LOGGER.info(f"Changing to tank {self.select}")
-        await self.interface.select_tank(self.select)
-
-    async def active_description(self) -> str:
-        return f"Operate valve"
-
-
-class WaitForFlow(Runnable):
-    """Set and wait for flow to stabilize."""
-    MAXIMUM_WAIT_TIME = 20
-    ACCEPT_BAND = 0.1
-
-    def __init__(self, interface: Interface, schedule: Execute, target_flow: float = 1.0):
-        Runnable.__init__(self, interface, schedule)
-        self.target_flow = target_flow
-
-    async def execute(self):
-        _LOGGER.debug(f"Setting flow rate to {self.target_flow}")
-        await self.interface.set_target_flow(self.target_flow)
-
-        begin = time.time()
-        while time.time() - begin < self.MAXIMUM_WAIT_TIME:
-            sample_flow = self.interface.sample_flow
-            if sample_flow is not None and abs(sample_flow - self.target_flow) <= self.ACCEPT_BAND:
-                return
-            await asyncio.sleep(0.5)
-
-        _LOGGER.warning(f"Trap failed to reach target flow after {self.MAXIMUM_WAIT_TIME} seconds")
-        await self.schedule.abort(
-            f"Sampling flow ({self.interface.sample_flow}) failed to reach target {self.target_flow}")
-
-    async def active_description(self) -> str:
-        return f"Flow stabilization"
+        await self.interface.select_source(self._source)
+        _LOGGER.debug(f"Selected source {self._source}")

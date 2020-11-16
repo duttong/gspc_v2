@@ -1,4 +1,7 @@
 import asyncio
+import typing
+import types
+
 
 class Interface:
     """The abstract interface to the hardware control"""
@@ -6,36 +9,86 @@ class Interface:
     def __init__(self, loop: asyncio.AbstractEventLoop):
         self._loop = loop
 
-        self.trap_temperature = None
-        self.sample_flow = None
-        self.sample_temperature = None
+        self.sample_flow_zero_offset: float = 0.0
 
-    async def select_flask(self, select):
-        """Select a flask for sampling."""
+    async def get_pressure(self) -> float:
+        """Read the current pressure"""
         pass
 
-    async def unselect_flask(self):
-        """Unselect sampling from any flask."""
+    async def get_oven_temperature(self) -> float:
+        """Read the current oven temperature"""
         pass
 
-    async def select_tank(self, select):
-        """Select a tank for sampling."""
+    async def set_cryogen(self, enable: bool):
+        """Set the cryogen control state"""
         pass
 
-    async def unselect_tank(self):
-        """Unselect sampling from any tank."""
+    async def set_gc_cryogen(self, enable: bool):
+        """Set the GC cryogen control state"""
         pass
 
-    async def set_target_flow(self, flow: float):
-        """Unselect sampling from any tank."""
+    async def set_vacuum(self, enable: bool):
+        """Set the evac vacuum"""
         pass
 
-    async def begin_flask_sample(self, select):
-        """Tell the sampling instrument to collect a measurement."""
+    async def set_sample(self, enable: bool):
+        """Set the sample valve"""
         pass
 
-    async def begin_tank_sample(self, select):
-        """Tell the sampling instrument to collect a measurement."""
+    async def set_gc_solenoid(self, enable: bool):
+        """Set the GC solenoid"""
+        pass
+
+    async def set_gc_heater(self, enable: bool):
+        """Set the GC heater"""
+        pass
+
+    async def set_overflow(self, enable: bool):
+        """Set the overflow valve"""
+        pass
+
+    async def set_load(self, enable: bool):
+        """Set the load valve"""
+        pass
+
+    async def precolumn_in(self):
+        """Put the pre-column in line"""
+        pass
+
+    async def precolumn_out(self):
+        """Put the pre-column out of line"""
+        pass
+
+    async def get_flow(self) -> float:
+        """Read the current flow"""
+        pass
+
+    async def set_flow(self, flow: float):
+        """Set the flow target directly"""
+        pass
+
+    async def adjust_flow(self, flow: float):
+        """Perform a flow adjustment iteration"""
+        pass
+
+    async def increment_flow(self, flow: float, multiplier: float):
+        """Perform a flow increment in the direction of the multiplier"""
+        pass
+
+    async def select_source(self, index: int, manual: bool = False):
+        """Change the selection valve"""
+        pass
+
+    async def set_high_pressure_valve(self, enable: bool):
+        """Set the high pressure valve for the currently selected source"""
+        pass
+
+    async def ready_gc(self):
+        """Prepare for GC trigger"""
+        pass
+
+    async def trigger_gc(self):
+        """Trigger a GC sample"""
         pass
 
     async def shutdown(self):

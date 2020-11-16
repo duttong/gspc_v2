@@ -10,6 +10,134 @@ from collections import namedtuple
 _LOGGER = logging.getLogger(__name__)
 
 
+def _to_duration(seconds):
+    if seconds <= 1.0:
+        seconds = 1
+        minutes = 0
+    else:
+        minutes = int(seconds / 60)
+        seconds -= minutes * 60
+        seconds = int(seconds)
+    return f"{minutes:3d} M {seconds:2d} S"
+
+
+def _to_time_display(point):
+    return QtCore.QDateTime.fromMSecsSinceEpoch(round(point * 1000.0)).toString("hh:mm:ss")
+
+
+class _InstantDisplay(QtCore.QObject):
+    def __init__(self, label, parent=None):
+        QtCore.QObject.__init__(self, parent)
+
+        self._label = label
+        self._label.setText("NONE")
+
+        self._event: typing.Optional['gspc.schedule.Event'] = None
+
+        self._updater = QtCore.QTimer(self)
+        self._updater.setSingleShot(True)
+        self._updater.timeout.connect(self._update_label)
+
+        self._update_label()
+
+    def _update_label(self):
+        if self._event is None:
+            self._updater.stop()
+            self._label.setText("NONE")
+            return
+        seconds_remaining = self._event.time - time.time()
+        if self._event.occurred or seconds_remaining <= 0.0:
+            self._updater.stop()
+            self._label.setText("<font color='green'>" + _to_time_display(self._event.time) + "</font>")
+            return
+        self._label.setText(_to_duration(seconds_remaining))
+        seconds_remaining = seconds_remaining - int(seconds_remaining)
+        self._updater.start(max(100, int(seconds_remaining * 1000)) + 10)
+
+    def set_event(self, event: typing.Optional['gspc.schedule.Event']):
+        self._event = event
+        self._update_label()
+
+    def pause(self):
+        self._updater.stop()
+        self._label.setText("<font color='orange'>PAUSED</font>")
+
+    def resume(self):
+        self._update_label()
+
+    def clear(self):
+        self._updater.stop()
+        self._event = None
+        self._label.setText("NONE")
+
+
+class _OnOffDisplay(QtCore.QObject):
+    def __init__(self, label, parent=None):
+        QtCore.QObject.__init__(self, parent)
+
+        self._label = label
+
+        self._on_event: typing.Optional['gspc.schedule.Event'] = None
+        self._off_event: typing.Optional['gspc.schedule.Event'] = None
+
+        self._updater = QtCore.QTimer(self)
+        self._updater.setSingleShot(True)
+        self._updater.timeout.connect(self._update_label)
+
+        self._update_label()
+
+    def _off_time(self):
+        if self._off_event is None:
+            return None
+        if self._off_event.occurred:
+            return self._off_event.time
+        return None
+
+    def _update_label(self):
+        if self._on_event is None:
+            self._updater.stop()
+            self._label.setText("NONE")
+            return
+        if self._off_event is not None and self._off_event.occurred:
+            self._updater.stop()
+            self._label.setText("<font color='red'>OFF AT " + _to_time_display(self._off_event.time) + "</font>")
+            return
+
+        if not self._on_event.occurred:
+            seconds_remaining = self._on_event.time - time.time()
+            self._label.setText(_to_duration(seconds_remaining))
+            seconds_remaining = seconds_remaining - int(seconds_remaining)
+            self._updater.start(max(100, int(seconds_remaining * 1000)) + 10)
+            return
+        if self._off_event is None:
+            self._updater.stop()
+            self._label.setText("<font color='green'>ON AT " + _to_time_display(self._on_event.time) + "</font>")
+            return
+
+        seconds_remaining = self._off_event.time - time.time()
+        self._label.setText("<font color='green'>ON UNTIL " + _to_duration(seconds_remaining) + "</font")
+        seconds_remaining = seconds_remaining - int(seconds_remaining)
+        self._updater.start(max(100, int(seconds_remaining * 1000)) + 10)
+
+    def set_events(self, on: typing.Optional['gspc.schedule.Event'], off: typing.Optional['gspc.schedule.Event']):
+        self._on_event = on
+        self._off_event = off
+        self._update_label()
+
+    def pause(self):
+        self._updater.stop()
+        self._label.setText("<font color='orange'>PAUSED</font>")
+
+    def resume(self):
+        self._update_label()
+
+    def clear(self):
+        self._updater.stop()
+        self._on_event = None
+        self._off_event = None
+        self._label.setText("NONE")
+
+
 class Main(QtWidgets.QMainWindow):
     def __init__(self):
         QtWidgets.QMainWindow.__init__(self)
@@ -70,7 +198,9 @@ class Main(QtWidgets.QMainWindow):
         status_layout.setRowStretch(1, 0)
         status_layout.setRowStretch(2, 0)
         status_layout.setRowStretch(3, 0)
-        status_layout.setRowStretch(4, 1)
+        status_layout.setRowStretch(4, 0)
+        status_layout.setRowStretch(5, 0)
+        status_layout.setRowStretch(6, 1)
         status_layout.setColumnStretch(0, 0)
         status_layout.setColumnStretch(1, 1)
 
@@ -101,23 +231,33 @@ class Main(QtWidgets.QMainWindow):
         self._elapsed_time.setText("NONE")
         status_layout.addWidget(self._elapsed_time, 2, 1, 1, -1, QtCore.Qt.AlignLeft)
 
-        self._schedule_begin_time = None
+        self._schedule_begin_time: typing.Optional[float] = None
         self._elapsed_updater = QtCore.QTimer(self._elapsed_time)
         self._elapsed_updater.setSingleShot(True)
         self._elapsed_updater.timeout.connect(self._update_elapsed)
 
-        status_layout.addWidget(QtWidgets.QLabel("Est. remaining:", status_pane), 3, 0, QtCore.Qt.AlignRight)
-        self._remaining_time = QtWidgets.QLabel(status_pane)
-        self._remaining_time.setFont(monospace)
-        self._remaining_time.setText("NONE")
-        status_layout.addWidget(self._remaining_time, 3, 1, 1, -1, QtCore.Qt.AlignLeft)
+        status_layout.addWidget(QtWidgets.QLabel("Cyrogen:", status_pane), 3, 0, QtCore.Qt.AlignRight)
+        cyrogen = QtWidgets.QLabel(status_pane)
+        cyrogen.setFont(monospace)
+        cyrogen.setText("NONE")
+        status_layout.addWidget(cyrogen, 3, 1, 1, -1, QtCore.Qt.AlignLeft)
+        self._cyrogen = _InstantDisplay(cyrogen, self)
 
-        self._estimated_end_time = None
-        self._remaining_updater = QtCore.QTimer(self._remaining_time)
-        self._remaining_updater.setSingleShot(True)
-        self._remaining_updater.timeout.connect(self._update_remaining)
+        status_layout.addWidget(QtWidgets.QLabel("Sample:", status_pane), 4, 0, QtCore.Qt.AlignRight)
+        sample = QtWidgets.QLabel(status_pane)
+        sample.setFont(monospace)
+        sample.setText("NONE")
+        status_layout.addWidget(sample, 4, 1, 1, -1, QtCore.Qt.AlignLeft)
+        self._sample = _OnOffDisplay(sample, self)
 
-        status_layout.addWidget(QtWidgets.QWidget(status_pane), 4, 0, 1, -1)
+        status_layout.addWidget(QtWidgets.QLabel("GC:", status_pane), 5, 0, QtCore.Qt.AlignRight)
+        gc = QtWidgets.QLabel(status_pane)
+        gc.setFont(monospace)
+        gc.setText("NONE")
+        status_layout.addWidget(gc, 5, 1, 1, -1, QtCore.Qt.AlignLeft)
+        self._gc = _InstantDisplay(gc, self)
+
+        status_layout.addWidget(QtWidgets.QWidget(status_pane), 6, 0, 1, -1)
 
         self._log_display = QtWidgets.QPlainTextEdit(central_widget)
         central_layout.addWidget(self._log_display, 1, 1, 1, -1)
@@ -146,15 +286,15 @@ class Main(QtWidgets.QMainWindow):
         self.sample_pressure.setFont(monospace)
         inputs_layout.addRow("Pressure (hPa):", self.sample_pressure)
 
-        self.trap_temperature = QtWidgets.QLabel(inputs_pane)
-        self.trap_temperature.setText("00.0")
-        self.trap_temperature.setFont(monospace)
-        inputs_layout.addRow("Trap (°C):", self.trap_temperature)
-
         self.sample_flow = QtWidgets.QLabel(inputs_pane)
         self.sample_flow.setText("00.000")
         self.sample_flow.setFont(monospace)
         inputs_layout.addRow("Flow (lpm):", self.sample_flow)
+
+        self.oven_temperature = QtWidgets.QLabel(inputs_pane)
+        self.oven_temperature.setText("0000.0")
+        self.oven_temperature.setFont(monospace)
+        inputs_layout.addRow("Oven (°C):", self.oven_temperature)
 
         control_pane = QtWidgets.QWidget(central_widget)
         io_display.addTab(control_pane, "Control")
@@ -173,7 +313,7 @@ class Main(QtWidgets.QMainWindow):
 
         control_layout.addWidget(QtWidgets.QWidget(control_pane), 1, 0, 1, 2)
 
-        self.loadable_tasks = dict()
+        self.loadable_tasks: typing.Dict[str, 'gspc.schedule.Task'] = dict()
 
         self._update_time()
         self._schedule_tab_changed()
@@ -186,44 +326,15 @@ class Main(QtWidgets.QMainWindow):
         self._time_updater.start(max(100, 1000 - int(now * 1000)) + 10)
         self._time_display.setText(QtCore.QDateTime.currentDateTime().toString("hh:mm:ss"))
 
-    @staticmethod
-    def _to_duration(seconds):
-        if seconds <= 1.0:
-            seconds = 1
-            minutes = 0
-        else:
-            minutes = int(seconds / 60)
-            seconds -= minutes * 60
-            seconds = int(seconds)
-        return f"{minutes:3} M {seconds:2} S"
-
     def _update_elapsed(self):
         if self._schedule_begin_time is None:
             self._elapsed_updater.stop()
             self._elapsed_time.setText("NONE")
             return
         seconds_elapsed = time.time() - self._schedule_begin_time
-        self._elapsed_time.setText(self._to_duration(seconds_elapsed))
+        self._elapsed_time.setText(_to_duration(seconds_elapsed))
         seconds_elapsed = seconds_elapsed - int(seconds_elapsed)
         self._elapsed_updater.start(max(100, 1000 - int(seconds_elapsed * 1000)) + 10)
-
-    def _update_remaining(self):
-        if self._estimated_end_time is None:
-            self._remaining_updater.stop()
-            self._remaining_time.setText("NONE")
-            return
-        seconds_remaining = self._estimated_end_time - time.time()
-        if seconds_remaining <= 0.0:
-            self._estimated_end_time = None
-            self._remaining_updater.stop()
-            self._remaining_time.setText("NONE")
-            return
-        if seconds_remaining < 1.0:
-            self._remaining_time.setText(self._to_duration(1.0))
-        else:
-            self._remaining_time.setText(self._to_duration(seconds_remaining))
-        seconds_remaining = seconds_remaining - int(seconds_remaining)
-        self._remaining_updater.start(max(100, int(seconds_remaining * 1000)) + 10)
 
     def log_event(self, text: str):
         """Add an event to the displayed log."""
@@ -483,13 +594,15 @@ class Main(QtWidgets.QMainWindow):
         if self._pause_button.isChecked():
             _LOGGER.debug(f"Execution paused requested")
             self.pause_execution()
-            self._estimated_end_time = None
-            self._remaining_updater.stop()
-            self._remaining_time.setText("PAUSED")
+            self._cyrogen.pause()
+            self._sample.pause()
+            self._gc.pause()
         else:
             _LOGGER.debug(f"Execution resumed")
             self.resume_execution()
-            self._update_remaining()
+            self._cyrogen.resume()
+            self._sample.resume()
+            self._gc.resume()
 
     def set_running(self, begin_time: typing.Optional[float] = None):
         """Change the display mode for when a schedule is running"""
@@ -502,9 +615,7 @@ class Main(QtWidgets.QMainWindow):
         self._close_file.setEnabled(False)
         if begin_time is not None:
             self._schedule_begin_time = begin_time
-        self._estimated_end_time = None
         self._update_elapsed()
-        self._update_remaining()
 
     def set_stopped(self):
         """Change the display mode for when no schedule is running"""
@@ -516,16 +627,18 @@ class Main(QtWidgets.QMainWindow):
         self._run_button.setChecked(False)
         self._close_file.setEnabled(self._schedule_control.currentIndex() > 0)
         self._schedule_begin_time = None
-        self._estimated_end_time = None
         self.current_task.setText("NONE")
         self._update_elapsed()
-        self._update_remaining()
+        self._cyrogen.clear()
+        self._sample.clear()
+        self._gc.clear()
         self._schedule_tab_changed()
 
-    def update_estimated_end(self, end_time: typing.Optional[float]):
-        """Update the estimated completion time for the currently running schedule"""
-        self._estimated_end_time = end_time
-        self._update_remaining()
+    def update_events(self, events: typing.Dict[str, 'gspc.schedule.Event']):
+        """Update the events currently active in the schedule"""
+        self._cyrogen.set_event(events.get('cyrogen'))
+        self._sample.set_events(events.get('sample_open'), events.get('sample_close'))
+        self._gc.set_event(events.get('gc_trigger'))
 
     def get_open_files(self) -> typing.Sequence[str]:
         """Get the list of currently open files."""

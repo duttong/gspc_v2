@@ -1,46 +1,54 @@
 import logging
 import asyncio
 import typing
+from gspc.const import CYCLE_SECONDS, SAMPLE_OPEN_AT, SAMPLE_SECONDS
 from gspc.hw.interface import Interface
 from gspc.schedule import Task, Runnable, Execute
-from .valve import SwitchToTank, WaitForFlow
-from .trap import WaitForCooled
 
-_LOGGER = logging.getLogger(__name__)
+from .sample import *
+from .flow import *
+from .valve import *
 
-
-class SampleTank(Runnable):
-    """Execute sampling of a tank, once the flow is ready."""
-    SAMPLE_TIME = 30.0
-
-    def __init__(self, interface: Interface, schedule: Execute, select):
-        Runnable.__init__(self, interface, schedule)
-        self.select = select
-
-    async def execute(self):
-        _LOGGER.info(f"Sampling tank {self.select}")
-        await self.interface.begin_flask_sample(self.select)
-        await asyncio.sleep(self.SAMPLE_TIME)
-        _LOGGER.info(f"Sampling completed for tank {self.select}")
-        await self.interface.unselect_flask()
-
-    async def predicted_run_time(self) -> float:
-        return self.SAMPLE_TIME
-
-    async def active_description(self) -> str:
-        return f"Tank {self.select}"
+LOW_FLOW_THRESHOLD = 0.2
 
 
-class Tank(Task):
-    """A task that samples from a tank."""
+class Tank(Sample):
+    def __init__(self, selection):
+        Sample.__init__(self)
+        self._selection = selection
 
-    def __init__(self, select):
-        self.select = select
+    def schedule(self, interface: Interface, schedule: Execute, origin: float) -> typing.List[Runnable]:
+        sample_origin = origin + SAMPLE_OPEN_AT
+        sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
-    def schedule(self, interface: Interface, schedule: Execute) -> typing.Sequence[Runnable]:
-        return [
-            SwitchToTank(interface, schedule, self.select),
-            WaitForFlow(interface, schedule),
-            WaitForCooled(interface, schedule),
-            SampleTank(interface, schedule, self.select)
+        async def low_flow_detected():
+            await interface.set_vacuum(False)
+
+        result = Sample.schedule(self, interface, schedule, origin) + [
+            FullFlow(interface, schedule, origin + 69),
+
+            DetectLowFlow(interface, schedule, sample_origin + 1, sample_post_origin, math.inf,
+                          LOW_FLOW_THRESHOLD, None, low_flow_detected),
+
+            # Redundant? appears to always happen
+            # OverflowOff(interface, schedule, sample_post_origin + 4),
         ]
+        if origin > 0.0:
+            result += [
+                SelectSource(interface, schedule, origin - 814, self._selection),
+                FullFlow(interface, schedule, origin - 813),
+
+                SelectSource(interface, schedule, origin - 435, self._selection),
+                FullFlow(interface, schedule, origin - 425),
+
+                FullFlow(interface, schedule, origin - 185),
+                OverflowOn(interface, schedule, origin - 180),
+                HighPressureOn(interface, schedule, origin - 180),
+            ]
+        else:
+            result += [
+                OverflowOn(interface, schedule, origin),
+                SelectSource(interface, schedule, origin, self._selection),
+                HighPressureOn(interface, schedule, origin),
+            ]
+        return result

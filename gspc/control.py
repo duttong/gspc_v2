@@ -37,17 +37,17 @@ class Window(Main):
 
     async def _update_inputs(self):
         while True:
-            sample_flow = self._interface.sample_flow
-            sample_pressure = self._interface.sample_temperature
-            trap_temperature = self._interface.trap_temperature
+            sample_flow = await self._interface.get_flow()
+            sample_pressure = await self._interface.get_pressure()
+            oven_temperature = await self._interface.get_oven_temperature()
 
             def update_gui():
                 if sample_flow is not None:
                     self.sample_flow.setText(f"{sample_flow:7.2f}")
                 if sample_pressure is not None:
                     self.sample_pressure.setText(f"{sample_pressure:6.1f}")
-                if trap_temperature is not None:
-                    self.trap_temperature.setText(f"{trap_temperature:6.1f}")
+                if oven_temperature is not None:
+                    self.oven_temperature.setText(f"{oven_temperature: 6.1f}")
 
             call_on_ui(update_gui)
             await asyncio.sleep(1)
@@ -166,19 +166,13 @@ class _Schedule(Execute):
         Execute.__init__(self, task_sequence)
         self._window = window
 
-    async def update_predicted_run_time(self, seconds_remaining: float):
-        estimated_end = time.time() + seconds_remaining
-
-        def update():
-            self._window.update_estimated_end(estimated_end)
-
-        call_on_ui(update)
-
     async def before_run(self, running: Runnable):
-        description = await running.active_description()
+        events = dict()
+        for key, event in self.events.items():
+            events[key] = event
 
         def update():
-            self._window.current_task.setText(description)
+            self._window.update_events(events)
 
         call_on_ui(update)
 
@@ -190,8 +184,10 @@ class Simulator(Interface):
         Interface.__init__(self, loop)
         self._display = display
 
-        self._display.trap_temperature.valueChanged.connect(self._trap_temperature_changed)
-        self._trap_temperature_changed()
+        self.sample_temperature = None
+        self.sample_flow = None
+        self.oven_temperature = None
+        self.high_pressure_on = False
 
         self._display.sample_flow.valueChanged.connect(self._sample_flow_changed)
         self._sample_flow_changed()
@@ -199,13 +195,8 @@ class Simulator(Interface):
         self._display.sample_pressure.valueChanged.connect(self._sample_pressure_changed)
         self._sample_pressure_changed()
 
-    def _trap_temperature_changed(self):
-        value = self._display.trap_temperature.value()
-
-        def _update():
-            self.trap_temperature = value
-
-        self._loop.call_soon_threadsafe(_update)
+        self._display.oven_temperature.valueChanged.connect(self._oven_temperature_changed)
+        self._oven_temperature_changed()
 
     def _sample_flow_changed(self):
         value = self._display.sample_flow.value()
@@ -223,23 +214,81 @@ class Simulator(Interface):
 
         self._loop.call_soon_threadsafe(_update)
 
-    async def select_flask(self, select):
-        call_on_ui(lambda: self._display.selected_source.setText(f"Flask: {select}"))
+    def _oven_temperature_changed(self):
+        value = self._display.oven_temperature.value()
 
-    async def unselect_flask(self):
-        call_on_ui(lambda: self._display.selected_source.setText("NONE"))
+        def _update():
+            self.oven_temperature = value
 
-    async def select_tank(self, select):
-        call_on_ui(lambda: self._display.selected_source.setText(f"Tank: {select}"))
+        self._loop.call_soon_threadsafe(_update)
 
-    async def unselect_tank(self):
-        call_on_ui(lambda: self._display.selected_source.setText("NONE"))
+    async def get_pressure(self) -> float:
+        return self.sample_temperature
 
-    async def set_target_flow(self, flow: float):
-        call_on_ui(lambda: self._display.flow_setpoint.setText(f"{flow:02.3}"))
+    async def get_oven_temperature(self) -> float:
+        return self.oven_temperature
 
-    async def begin_flask_sample(self, select):
+    async def set_cryogen(self, enable: bool):
+        call_on_ui(lambda: self._display.cyrogen.setText("ON" if enable else "OFF"))
+        if enable and self.oven_temperature > -60:
+            call_on_ui(lambda: self._display.oven_temperature.setValue(-60.0))
+
+    async def set_gc_cryogen(self, enable: bool):
+        call_on_ui(lambda: self._display.gc_cyrogen.setText("ON" if enable else "OFF"))
+
+    async def set_vacuum(self, enable: bool):
+        call_on_ui(lambda: self._display.vacuum.setText("ON" if enable else "OFF"))
+
+    async def set_sample(self, enable: bool):
+        call_on_ui(lambda: self._display.sample_valve.setText("ON" if enable else "OFF"))
+
+    async def set_gc_solenoid(self, enable: bool):
+        call_on_ui(lambda: self._display.gc_solenoid.setText("ON" if enable else "OFF"))
+
+    async def set_gc_heater(self, enable: bool):
+        call_on_ui(lambda: self._display.gc_heater.setText("ON" if enable else "OFF"))
+        if enable and self.oven_temperature < 10:
+            call_on_ui(lambda: self._display.oven_temperature.setValue(10.0))
+
+    async def set_overflow(self, enable: bool):
+        call_on_ui(lambda: self._display.overflow.setText("ON" if enable else "OFF"))
+
+    async def set_load(self, enable: bool):
+        call_on_ui(lambda: self._display.load.setText("ON" if enable else "OFF"))
+
+    async def precolumn_in(self):
+        call_on_ui(lambda: self._display.pre_column.setText("IN"))
+
+    async def precolumn_out(self):
+        call_on_ui(lambda: self._display.pre_column.setText("OUT"))
+
+    async def get_flow(self) -> float:
+        return self.sample_flow
+
+    async def set_flow(self, flow: float):
+        call_on_ui(lambda: self._display.sample_flow.setValue(flow))
+
+    async def increment_flow(self, flow: float, multiplier: float):
+        delta = 0.25 * multiplier
+
+        def _update():
+            value = self._display.sample_flow.value()
+            value += delta
+            self._display.sample_flow.setValue(value)
+
+        call_on_ui(_update)
+
+    async def select_source(self, index: int, manual: bool = False):
+        display = f"{index}"
+        if manual:
+            self.high_pressure_on = True
+        if self.high_pressure_on:
+            display += " ON"
+        call_on_ui(lambda: self._display.selected_source.setText(display))
+
+    async def set_high_pressure_valve(self, enable: bool):
+        self.high_pressure_on = enable
+
+    async def trigger_gc(self):
         call_on_ui(lambda: self._display.update_gc_trigger())
 
-    async def begin_tank_sample(self, select):
-        call_on_ui(lambda: self._display.update_gc_trigger())
