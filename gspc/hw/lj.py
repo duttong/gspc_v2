@@ -28,7 +28,7 @@ class LabJack:
         asyncio.set_event_loop(self._loop)
         self._loop.run_forever()
 
-    async def read_analog(self, *addresses: int) -> typing.Tuple[float, ...]:
+    async def read_analog(self, *addresses: int) -> float:
         """Read one or more analog values from the specified addresses."""
 
         async def execute_read() -> typing.Tuple[float, ...]:
@@ -47,6 +47,16 @@ class LabJack:
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
 
+    async def write_analog(self, address: int, value: float) -> None:
+        """Set a single analog channel."""
+
+        async def execute_write() -> None:
+            cmd = f'AOT{address}'
+            ljm.eWriteName(self._handle, cmd, value)
+            _LOGGER.debug(f'Write LabJack analog channel {address}: {value:.2f}')
+
+        return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_write(), self._loop))
+
     async def read_digital(self, address: int) -> bool:
         """Read a single digital channel."""
 
@@ -64,7 +74,7 @@ class LabJack:
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
 
     async def write_digital(self, address: int, state: bool) -> None:
-        """Read a single digital channel."""
+        """Set a single digital channel."""
         if state:
             state = 1
         else:

@@ -29,7 +29,7 @@ class ZeroFlow(Runnable):
         if flow_sum <= 0:
             return
         zero_flow = flow_sum / flow_count
-        self.interface.sample_flow_zero_offset = zero_flow
+        self.interface.sample_flow_zero_offset = -zero_flow
         _LOGGER.info(f"Measured zero flow as {zero_flow:.1f}")
 
     async def execute(self):
