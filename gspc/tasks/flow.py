@@ -112,13 +112,13 @@ class DetectLowFlow(Runnable):
     def __init__(self, interface: Interface, schedule: Execute, origin: float, end: float,
                  flow: float, threshold: float,
                  increment: typing.Optional[float] = None,
-                 cancel: typing.Optional[typing.Callable[[], typing.Awaitable[None]]] = None):
+                 low_flow_mode: typing.Optional[typing.Callable[[], typing.Awaitable[None]]] = None):
         Runnable.__init__(self, interface, schedule, origin)
         self._duration = end - origin
         self._flow = flow
         self._threshold = threshold
         self._increment = increment
-        self._cancel = cancel
+        self._low_flow_mode = low_flow_mode
 
     async def _monitor_flow(self):
         end_time = time.time() + self._duration
@@ -132,8 +132,8 @@ class DetectLowFlow(Runnable):
                         await self.interface.increment_flow(self._flow, self._increment)
                     _LOGGER.info(f"Low flow detected")
                 elif time.time() - low_begin_time >= self.TRIGGER_SECONDS:
-                    if self._cancel is not None:
-                        await self._cancel()
+                    if self._low_flow_mode is not None:
+                        await self._low_flow_mode()
                     _LOGGER.info(f"Extended low flow detected")
                     return
             else:
@@ -144,10 +144,12 @@ class DetectLowFlow(Runnable):
         await self.schedule.start_background(self._monitor_flow())
 
 
-class RecordFlow(Runnable):
-    def __init__(self, interface: Interface, schedule: Execute, origin: float):
+class RecordLastFlow(Runnable):
+    def __init__(self, interface: Interface, schedule: Execute, origin: float,
+                 record: typing.Callable[[float, float], None]):
         Runnable.__init__(self, interface, schedule, origin)
+        self._record = record
 
     async def execute(self):
-        flow = await self.interface.get_flow()
-        # Warning NYI
+        self._record(await self.interface.get_flow(),
+                     await self.interface.get_flow_control_output())

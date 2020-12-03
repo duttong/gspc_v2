@@ -91,6 +91,9 @@ class Instrument(Interface):
         await asyncio.sleep(2)
         await self._lj.write_digital(self.DOT_PRECOLUMN_OUT, False)
 
+    async def get_flow_control_output(self) -> float:
+        return self._flow_control_voltage
+
     async def get_flow(self) -> float:
         return (await self._lj.read_analog(self.AIN_FLOW)) * 100.0 + self.sample_flow_zero_offset
 
@@ -134,6 +137,7 @@ class Instrument(Interface):
             await self.set_flow(flow)
 
         self._flow_control_voltage += multiplier * 0.02
+        self._flow_control_voltage = _clamp(self._flow_control_voltage, 0, 12)
         await self._lj.write_analog(self.AOT_FLOW, self._flow_control_voltage)
 
     async def _step_source_selector(self):
@@ -202,3 +206,4 @@ class Instrument(Interface):
         await self.select_source(2)
         await self.set_overflow(True)
         await self.set_flow(3)
+        self._flow_control_voltage = None

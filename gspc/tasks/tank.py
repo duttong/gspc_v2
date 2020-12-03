@@ -17,14 +17,21 @@ class Tank(Sample):
         Sample.__init__(self)
         self._selection = selection
 
-    def schedule(self, interface: Interface, schedule: Execute, origin: float) -> typing.List[Runnable]:
+    def schedule(self, interface: Interface, schedule: Execute, origin: float,
+                 data: typing.Optional[Data] = None) -> typing.List[Runnable]:
         sample_origin = origin + SAMPLE_OPEN_AT
         sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
+        if data is None:
+            data = Data()
+        data.sample_type = "tank"
+        data.ssv_pos = self._selection
+
         async def low_flow_detected():
             await interface.set_vacuum(False)
+            data.low_flow = "Y"
 
-        result = Sample.schedule(self, interface, schedule, origin) + [
+        result = Sample.schedule(self, interface, schedule, origin, data) + [
             FullFlow(interface, schedule, origin + 69),
 
             DetectLowFlow(interface, schedule, sample_origin + 1, sample_post_origin, math.inf,

@@ -59,6 +59,10 @@ class Interface:
         """Put the pre-column out of line"""
         pass
 
+    async def get_flow_control_output(self) -> float:
+        """Get the current flow control value"""
+        pass
+
     async def get_flow(self) -> float:
         """Read the current flow"""
         pass

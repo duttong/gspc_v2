@@ -6,6 +6,7 @@ import time
 import types
 from collections import namedtuple
 from gspc.hw.interface import Interface
+from gspc.output import abort_cycle
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class AbortPoint(Runnable):
         self._aborted = False
         self._abort_message = None
 
-    async def abort(self, message: typing.Optional[str] = None):
+    async def abort(self, message: typing.Optional[str] = None) -> None:
         """Schedule the abort"""
         self._aborted = True
         if message is not None:
@@ -159,6 +160,7 @@ class Execute:
         self._background_tasks.clear()
 
         _LOGGER.debug("Schedule abort completed")
+        abort_cycle(self.abort_message)
 
     async def _complete_processing(self):
         for task in self._background_tasks:

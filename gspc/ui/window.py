@@ -200,9 +200,11 @@ class Main(QtWidgets.QMainWindow):
         status_layout.setRowStretch(3, 0)
         status_layout.setRowStretch(4, 0)
         status_layout.setRowStretch(5, 0)
-        status_layout.setRowStretch(6, 1)
+        status_layout.setRowStretch(6, 0)
+        status_layout.setRowStretch(7, 1)
         status_layout.setColumnStretch(0, 0)
         status_layout.setColumnStretch(1, 1)
+        status_layout.setColumnStretch(2, 0)
 
         status_layout.addWidget(QtWidgets.QLabel("File:", status_pane), 0, 0, QtCore.Qt.AlignRight)
         self._selected_file = QtWidgets.QLabel(status_pane)
@@ -219,45 +221,60 @@ class Main(QtWidgets.QMainWindow):
         self._close_file.setEnabled(False)
         self._close_file.clicked.connect(self._remove_file)
 
-        status_layout.addWidget(QtWidgets.QLabel("Task:", status_pane), 1, 0, QtCore.Qt.AlignRight)
+        status_layout.addWidget(QtWidgets.QLabel("Output:", status_pane), 1, 0, QtCore.Qt.AlignRight)
+        self._selected_output = QtWidgets.QLabel(status_pane)
+        #self._selected_output.setFont(monospace)
+        self._selected_output.setText("NONE")
+        status_layout.addWidget(self._selected_output, 1, 1, 1, 1, QtCore.Qt.AlignLeft)
+        self._open_output = QtWidgets.QPushButton(status_pane)
+        status_layout.addWidget(self._open_output, 1, 2, 1, 1)
+        self._open_output.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_DialogOpenButton))
+        self._open_output.clicked.connect(self._set_output)
+        self._close_output = QtWidgets.QPushButton(status_pane)
+        status_layout.addWidget(self._close_output, 1, 3, 1, 1)
+        self._close_output.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
+        self._close_output.setEnabled(False)
+        self._close_output.clicked.connect(self._remove_output)
+
+        status_layout.addWidget(QtWidgets.QLabel("Task:", status_pane), 2, 0, QtCore.Qt.AlignRight)
         self.current_task = QtWidgets.QLabel(status_pane)
         #self.current_task.setFont(monospace)
         self.current_task.setText("NONE")
-        status_layout.addWidget(self.current_task, 1, 1, 1, -1, QtCore.Qt.AlignLeft)
+        status_layout.addWidget(self.current_task, 2, 1, 1, -1, QtCore.Qt.AlignLeft)
 
-        status_layout.addWidget(QtWidgets.QLabel("Time elapsed:", status_pane), 2, 0, QtCore.Qt.AlignRight)
+        status_layout.addWidget(QtWidgets.QLabel("Time elapsed:", status_pane), 3, 0, QtCore.Qt.AlignRight)
         self._elapsed_time = QtWidgets.QLabel(status_pane)
         self._elapsed_time.setFont(monospace)
         self._elapsed_time.setText("NONE")
-        status_layout.addWidget(self._elapsed_time, 2, 1, 1, -1, QtCore.Qt.AlignLeft)
+        status_layout.addWidget(self._elapsed_time, 3, 1, 1, -1, QtCore.Qt.AlignLeft)
 
         self._schedule_begin_time: typing.Optional[float] = None
         self._elapsed_updater = QtCore.QTimer(self._elapsed_time)
         self._elapsed_updater.setSingleShot(True)
         self._elapsed_updater.timeout.connect(self._update_elapsed)
 
-        status_layout.addWidget(QtWidgets.QLabel("Cyrogen:", status_pane), 3, 0, QtCore.Qt.AlignRight)
+        status_layout.addWidget(QtWidgets.QLabel("Cyrogen:", status_pane), 4, 0, QtCore.Qt.AlignRight)
         cyrogen = QtWidgets.QLabel(status_pane)
         cyrogen.setFont(monospace)
         cyrogen.setText("NONE")
-        status_layout.addWidget(cyrogen, 3, 1, 1, -1, QtCore.Qt.AlignLeft)
+        status_layout.addWidget(cyrogen, 4, 1, 1, -1, QtCore.Qt.AlignLeft)
         self._cyrogen = _InstantDisplay(cyrogen, self)
 
-        status_layout.addWidget(QtWidgets.QLabel("Sample:", status_pane), 4, 0, QtCore.Qt.AlignRight)
+        status_layout.addWidget(QtWidgets.QLabel("Sample:", status_pane), 5, 0, QtCore.Qt.AlignRight)
         sample = QtWidgets.QLabel(status_pane)
         sample.setFont(monospace)
         sample.setText("NONE")
-        status_layout.addWidget(sample, 4, 1, 1, -1, QtCore.Qt.AlignLeft)
+        status_layout.addWidget(sample, 5, 1, 1, -1, QtCore.Qt.AlignLeft)
         self._sample = _OnOffDisplay(sample, self)
 
-        status_layout.addWidget(QtWidgets.QLabel("GC:", status_pane), 5, 0, QtCore.Qt.AlignRight)
+        status_layout.addWidget(QtWidgets.QLabel("GC:", status_pane), 6, 0, QtCore.Qt.AlignRight)
         gc = QtWidgets.QLabel(status_pane)
         gc.setFont(monospace)
         gc.setText("NONE")
-        status_layout.addWidget(gc, 5, 1, 1, -1, QtCore.Qt.AlignLeft)
+        status_layout.addWidget(gc, 6, 1, 1, -1, QtCore.Qt.AlignLeft)
         self._gc = _InstantDisplay(gc, self)
 
-        status_layout.addWidget(QtWidgets.QWidget(status_pane), 6, 0, 1, -1)
+        status_layout.addWidget(QtWidgets.QWidget(status_pane), 7, 0, 1, -1)
 
         self._log_display = QtWidgets.QPlainTextEdit(central_widget)
         central_layout.addWidget(self._log_display, 1, 1, 1, -1)
@@ -284,7 +301,7 @@ class Main(QtWidgets.QMainWindow):
         self.sample_pressure = QtWidgets.QLabel(inputs_pane)
         self.sample_pressure.setText("0000.00")
         self.sample_pressure.setFont(monospace)
-        inputs_layout.addRow("Pressure (hPa):", self.sample_pressure)
+        inputs_layout.addRow("Pressure (torr):", self.sample_pressure)
 
         self.sample_flow = QtWidgets.QLabel(inputs_pane)
         self.sample_flow.setText("00.000")
@@ -523,6 +540,23 @@ class Main(QtWidgets.QMainWindow):
             return
         self._schedule_control.removeTab(index)
 
+    def _set_output(self):
+        filename = QtWidgets.QFileDialog.getOpenFileName(self, "Select Output", "", "Output (*.txt *.xl)")
+        if filename is None or len(filename) <= 0:
+            return
+        filename = filename[0]
+        if filename is None or len(filename) <= 0:
+            return
+        file = Path(filename)
+        if file.suffix.lower() == ".txt" or file.suffix.lower() == ".xl":
+            rootparts = list(file.parts[:-1]) + [file.stem]
+            self.change_output(str(Path(*rootparts)))
+        else:
+            self.change_output(filename)
+
+    def _remove_output(self):
+        self.change_output(None)
+
     def add_manual_task(self, name: str, execute: typing.Callable[[], None]):
         """Add a manual task to the list of executable ones."""
         item = QtWidgets.QListWidgetItem()
@@ -587,6 +621,15 @@ class Main(QtWidgets.QMainWindow):
     def resume_execution(self):
         """Called when a resume of the running schedule is requested"""
         pass
+
+    def change_output(self, name: typing.Optional[str]):
+        """Change the output file base"""
+        if name is not None and len(name) > 0:
+            self._selected_output.setText(name)
+            self._close_file.setEnabled(True)
+        else:
+            self._selected_output.setText("")
+            self._close_file.setEnabled(False)
 
     def _pause_clicked(self):
         if not self._pause_button.isEnabled():

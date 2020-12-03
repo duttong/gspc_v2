@@ -17,9 +17,14 @@ LOW_FLOW_THRESHOLD = 0.2
 
 
 class Zero(Sample):
-    def schedule(self, interface: Interface, schedule: Execute, origin: float) -> typing.List[Runnable]:
+    def schedule(self, interface: Interface, schedule: Execute, origin: float,
+                 data: typing.Optional[Data] = None) -> typing.List[Runnable]:
         sample_origin = origin + SAMPLE_OPEN_AT
         sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
+
+        if data is None:
+            data = Data()
+        data.sample_type = "zero"
 
         maintain_sample_flow = MaintainFlow(interface, schedule, sample_origin, sample_post_origin,
                                             SAMPLE_FLOW, LOWER_SAMPLE_FLOW, UPPER_SAMPLE_FLOW)
@@ -27,8 +32,9 @@ class Zero(Sample):
         async def low_flow_detected():
             await maintain_sample_flow.stop(),
             await interface.set_vacuum(False)
+            data.low_flow = "Y"
 
-        result = Sample.schedule(self, interface, schedule, origin) + [
+        result = Sample.schedule(self, interface, schedule, origin, data) + [
             StaticFlow(interface, schedule, origin + 69, SAMPLE_FLOW),
             FeedbackFlow(interface, schedule, origin + 71, SAMPLE_FLOW),
             FeedbackFlow(interface, schedule, origin + 111, SAMPLE_FLOW),

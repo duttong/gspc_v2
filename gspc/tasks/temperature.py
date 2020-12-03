@@ -12,8 +12,10 @@ class WaitForOvenCool(Runnable):
     REQUIRED_TEMPERATURE = -55
 
     def __init__(self, interface: Interface, schedule: Execute, origin: float,
+                 cooling_failed: typing.Optional[typing.Callable[[], None]] = None,
                  abort_point: typing.Optional[AbortPoint] = None):
         Runnable.__init__(self, interface, schedule, origin)
+        self._cooling_failed = cooling_failed
         self._abort_point = abort_point
 
     async def execute(self):
@@ -24,6 +26,8 @@ class WaitForOvenCool(Runnable):
                 if i == 0:
                     return False
                 return True
+            if self._cooling_failed:
+                self._cooling_failed()
             _LOGGER.info(f"GC oven temperature too high ({temperature:.1f} > {self.REQUIRED_TEMPERATURE}), waiting for 15 seconds")
             await asyncio.sleep(15)
 

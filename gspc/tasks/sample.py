@@ -4,6 +4,7 @@ import typing
 from gspc.const import CYCLE_SECONDS, SAMPLE_OPEN_AT, SAMPLE_SECONDS
 from gspc.hw.interface import Interface
 from gspc.schedule import Task, Runnable, Execute, AbortPoint
+from gspc.output import CycleData, begin_cycle, complete_cycle, log_message
 
 from .cyrogen import *
 from .vacuum import *
@@ -37,6 +38,146 @@ class SampleClose(Runnable):
         _LOGGER.info("Sample valve closed")
 
 
+class Data(CycleData):
+    def __init__(self):
+        CycleData.__init__(self)
+        self.sample_number: typing.Optional[int] = None
+        self.sample_type: typing.Optional[str] = None
+        self.ssv_pos: typing.Optional[int] = None
+
+        self.mean1: typing.Optional[float] = None
+        self.stddev1: typing.Optional[float] = None
+        self.data1: typing.Optional[typing.List[float]] = None
+
+        self.mean2: typing.Optional[float] = None
+        self.stddev2: typing.Optional[float] = None
+        self.data2: typing.Optional[typing.List[float]] = None
+
+        self.low_flow: typing.Optional[str] = None
+        self.last_flow: typing.Optional[float] = None
+        self.last_flow_control: typing.Optional[float] = None
+
+        self.cryo_extra_count: typing.Optional[int] = 0
+
+        # Not sure this is actually useful: it would only be non-zero if not in low flow mode and the low flow
+        # condition occured 1-s before the end of the cycle (i.e. the last reading was low flow)
+        self.low_flow_count: typing.Optional[int] = 0
+
+    def _begin(self):
+        self.header("\t".join([
+            "Filename", "Date", "Time",
+            "Sample#",
+            "Net Pressure",
+            "SampType",
+            "SSVPos",
+            "Last flow",
+            "Low Flow?",
+            "cryocount",
+            "Mean1",
+            "Mean2",
+            "%Error1",
+            "%Error2",
+            "loflocount",
+            "Last vflow"]))
+
+    @staticmethod
+    def _log_fields(fields: typing.List[str]):
+        log_message(",".join(fields))
+
+    def finish(self):
+        self._begin()
+
+        now = time.localtime()
+        fields = [
+            self.current_file_name() or "NONE",
+            time.strftime("%Y-%m-%d", now),
+            time.strftime("%H-%M-%S", now),
+            self.sample_number and f"{self.sample_number}" or "NONE",
+        ]
+        net_pressure = None
+        if self.mean1 and self.mean2:
+            net_pressure = self.mean2 - self.mean1
+            pct_error1 = ((self.stddev1 or 0.0) / self.mean1)
+            pct_error2 = ((self.stddev2 or 0.0) / self.mean2)
+            fields += [
+                f"{net_pressure:.2f}",
+                self.sample_type and f"{self.sample_type}" or "NONE",
+                self.ssv_pos and f"{self.ssv_pos}" or "NONE",
+                self.last_flow and f"{self.last_flow:.2f}" or "NONE",
+                self.low_flow and f"{self.low_flow}" or "N",
+                self.cryo_extra_count and f"{self.cryo_extra_count}" or "0",
+                f"{self.mean1:.2f}",
+                f"{self.mean2:.2f}",
+                f"{pct_error1:.2f}",
+                f"{pct_error2:.2f}",
+                self.low_flow_count and f"{self.low_flow_count}" or "0",
+                self.last_flow_control and f"{self.last_flow_control:.2f}" or "NONE",
+            ]
+        else:
+            fields.append("INCOMPLETE DATA")
+        self.write("\t".join(fields))
+
+        log_message("-------------------------------------------------------------")
+        self._log_fields(["date", "time", "filename", "sample#"])
+        self._log_fields([self.current_file_name() or "NONE",
+                          time.strftime("%Y-%m-%d", now),
+                          time.strftime("%H-%M-%S", now),
+                          self.sample_number and f"{self.sample_number}" or "NONE"
+                          ])
+        log_message("")
+
+        self._log_fields(["data (torr)", "mean", "std dev", "net change"])
+        if self.data1 is not None:
+            self._log_fields([f"{value:.2f}" for value in self.data1])
+        self._log_fields(["XXXXXXXXX",
+                          self.mean1 and f"{self.mean1:.2f}" or "NONE",
+                          self.stddev1 and f"{self.stddev1:.2f}" or "NONE"])
+
+        if self.data2 is not None:
+            self._log_fields([f"{value:.2f}" for value in self.data2])
+        self._log_fields(["XXXXXXXXX",
+                          self.mean2 and f"{self.mean2:.2f}" or "NONE",
+                          self.stddev2 and f"{self.stddev2:.2f}" or "NONE",
+                          net_pressure and f"{net_pressure:.2f}" or "NONE"])
+        log_message("")
+
+    def abort(self, message: typing.Optional[str] = None):
+        self.finish()
+        if message is not None:
+            self.write("SAMPLING ABORTED: " + message)
+        else:
+            self.write("SAMPLING ABORTED")
+
+    def record_pressure_start(self, mean: float, stddev: float, values: typing.List[float]):
+        self.mean1 = mean
+        self.stddev1 = stddev
+        self.data1 = values
+
+    def record_pressure_end(self, mean: float, stddev: float, values: typing.List[float]):
+        self.mean2 = mean
+        self.stddev2 = stddev
+        self.data2 = values
+
+    def record_last_flow(self, flow: float, control: float):
+        self.last_flow = flow
+        self.last_flow_control = control
+
+    def cryo_extended(self):
+        self.cryo_extra_count = (self.cryo_extra_count or 0) + 1
+
+
+class CycleBegin(Runnable):
+    def __init__(self, interface: Interface, schedule: Execute, origin: float, data: Data):
+        Runnable.__init__(self, interface, schedule, origin)
+        self.clear_events.add("sample_open")
+        self.clear_events.add("sample_close")
+        self.clear_events.add("gc_trigger")
+        self.data = data
+
+    async def execute(self):
+        begin_cycle(self.data)
+
+
 class CycleEnd(Runnable):
     def __init__(self, interface: Interface, schedule: Execute, origin: float):
         Runnable.__init__(self, interface, schedule, origin)
@@ -44,16 +185,27 @@ class CycleEnd(Runnable):
         self.clear_events.add("sample_close")
         self.clear_events.add("gc_trigger")
 
+    async def execute(self):
+        complete_cycle()
+
 
 class Sample(Task):
     def __init__(self):
         Task.__init__(self, CYCLE_SECONDS)
 
-    def schedule(self, interface: Interface, schedule: Execute, origin: float) -> typing.List[Runnable]:
+    def schedule(self, interface: Interface, schedule: Execute, origin: float,
+                 data: typing.Optional[Data] = None) -> typing.List[Runnable]:
         sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
+
+        if data is None:
+            data = Data()
+
+        data.sample_number = int(origin / CYCLE_SECONDS) + 1
 
         abort_after_cycle = AbortPoint(interface, schedule, origin + CYCLE_SECONDS)
         result = [
+            CycleBegin(interface, schedule, origin, data),
+
             EnableCryogen(interface, schedule, origin + 1),
             DisableCryogen(interface, schedule, sample_post_origin - 5),
 
@@ -71,10 +223,11 @@ class Sample(Task):
             EnableGCCryogen(interface, schedule, sample_post_origin - 240),
             DisableGCCryogen(interface, schedule, sample_post_origin + 360),
 
-            MeasurePressure(interface, schedule, origin + SAMPLE_OPEN_AT - 7, 7),
+            MeasurePressure(interface, schedule, origin + SAMPLE_OPEN_AT - 7, 7, data.record_pressure_start),
 
-            WaitForOvenCool(interface, schedule, sample_post_origin - 15, abort_after_cycle),
-            RecordFlow(interface, schedule, sample_post_origin - 2),
+            WaitForOvenCool(interface, schedule, sample_post_origin - 15,
+                            data.cryo_extended, abort_after_cycle),
+            RecordLastFlow(interface, schedule, sample_post_origin - 2, data.record_last_flow),
 
             GCReady(interface, schedule, sample_post_origin + 1),
             GCSolenoidOn(interface, schedule, sample_post_origin + 1),
@@ -84,18 +237,18 @@ class Sample(Task):
             HighPressureOff(interface, schedule, sample_post_origin + 3),
             OverflowOff(interface, schedule, sample_post_origin + 3),
 
-            MeasurePressure(interface, schedule, sample_post_origin + 4, 16),
+            MeasurePressure(interface, schedule, sample_post_origin + 4, 16, data.record_pressure_end),
             CheckSampleTemperature(interface, schedule, sample_post_origin + 69),
 
+            abort_after_cycle,
             CycleEnd(interface, schedule, origin + CYCLE_SECONDS),
-            abort_after_cycle
         ]
         if origin > 0.0:
             result += [
                 OverflowOff(interface, schedule, origin - 435),
 
                 # Does this make sense? (isn't the flow on here?)
-                #ZeroFlow(interface, schedule, origin - 230),
+                # ZeroFlow(interface, schedule, origin - 230),
 
                 EnableCryogen(interface, schedule, origin - 100),
                 OverflowOn(interface, schedule, origin - 50),

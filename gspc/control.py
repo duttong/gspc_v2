@@ -6,6 +6,7 @@ from gspc.ui.window import Main
 from gspc.schedule import Execute, Task, Runnable, known_tasks
 from gspc.hw.interface import Interface
 from gspc.util import call_on_ui, LogHandler
+from gspc.output import set_output_name
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
@@ -34,6 +35,7 @@ class Window(Main):
         root_logger.addHandler(self._log_handler)
 
         self.restore_open_files()
+        self.restore_output_target()
 
     async def _update_inputs(self):
         while True:
@@ -131,6 +133,22 @@ class Window(Main):
                 continue
             self.add_open_file(file_path)
         settings.endArray()
+
+    def change_output(self, name: typing.Optional[str]):
+        Main.change_output(self, name)
+        set_output_name(name)
+        settings = self._get_settings()
+        if name is not None and len(name) > 0:
+            settings.setValue("outputName", name)
+        else:
+            settings.setValue("outputName", "")
+
+    def restore_output_target(self):
+        settings = self._get_settings()
+        output_name = settings.value("outputName", None, str)
+        Main.change_output(self, output_name)
+        if output_name and len(output_name) > 0:
+            set_output_name(output_name)
 
     def closeEvent(self, event):
         if self._active_schedule is None:
@@ -261,6 +279,9 @@ class Simulator(Interface):
 
     async def precolumn_out(self):
         call_on_ui(lambda: self._display.pre_column.setText("OUT"))
+
+    async def get_flow_control_output(self) -> float:
+        return self.sample_flow
 
     async def get_flow(self) -> float:
         return self.sample_flow

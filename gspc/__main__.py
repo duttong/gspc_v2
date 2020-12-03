@@ -3,6 +3,7 @@ import asyncio
 import logging
 from gspc.util import initialize_ui_thread
 import gspc.tasks
+from gspc.output import install_output_log_handler
 from threading import Thread, Event
 from PyQt5 import QtWidgets
 from gspc.control import Window
@@ -48,6 +49,8 @@ def main():
 
     window = Window(loop, interface)
     window.show()
+
+    install_output_log_handler()
 
     rc = app.exec_()
     shutdown_complete = Event()
