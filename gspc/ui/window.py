@@ -315,20 +315,46 @@ class Main(QtWidgets.QMainWindow):
 
         control_pane = QtWidgets.QWidget(central_widget)
         io_display.addTab(control_pane, "Control")
-        control_layout = QtWidgets.QGridLayout(control_pane)
+        control_layout = QtWidgets.QVBoxLayout(control_pane)
         control_pane.setLayout(control_layout)
 
-        control_layout.setRowStretch(0, 0)
-        control_layout.setRowStretch(1, 1)
-        control_layout.setColumnStretch(1, 0)
-        control_layout.setColumnStretch(1, 1)
+        self.overflow_toggle = QtWidgets.QPushButton()
+        self.overflow_toggle.setText("Overflow")
+        self.overflow_toggle.setStyleSheet("""
+            QPushButton {
+                background-color: red;
+            }
+            QPushButton:checked {
+                background-color: green;     
+            }
+        """)
+        self.overflow_toggle.setCheckable(True)
+        control_layout.addWidget(self._line_layout(control_pane, self.overflow_toggle))
 
-        self.valve_toggle = QtWidgets.QPushButton(control_pane)
-        control_layout.addWidget(self.valve_toggle, 0, 0, QtCore.Qt.AlignLeft)
-        self.valve_toggle.setText("Valve")
-        self.valve_toggle.setCheckable(True)
+        self.vacuum_toggle = QtWidgets.QPushButton(control_pane)
+        self.vacuum_toggle.setText("Vacuum")
+        self.vacuum_toggle.setStyleSheet("""
+            QPushButton {
+                background-color: red;
+            }
+            QPushButton:checked {
+                background-color: green;     
+            }
+        """)
+        self.vacuum_toggle.setCheckable(True)
+        control_layout.addWidget(self._line_layout(control_pane, self.vacuum_toggle))
 
-        control_layout.addWidget(QtWidgets.QWidget(control_pane), 1, 0, 1, 2)
+        self.trigger_gc = QtWidgets.QPushButton(control_pane)
+        self.trigger_gc.setText("Trigger GC")
+        control_layout.addWidget(self._line_layout(control_pane, self.trigger_gc))
+
+        self.apply_source = QtWidgets.QPushButton(control_pane)
+        self.apply_source.setText("Change Source:")
+        self.selected_source = QtWidgets.QSpinBox(control_pane)
+        self.selected_source.setRange(0, 15)
+        control_layout.addWidget(self._line_layout(control_pane, self.apply_source, self.selected_source))
+
+        control_layout.addStretch(1)
 
         self.loadable_tasks: typing.Dict[str, 'gspc.schedule.Task'] = dict()
 
@@ -336,6 +362,21 @@ class Main(QtWidgets.QMainWindow):
         self._schedule_tab_changed()
         self.set_stopped()
         self.log_event("Program started")
+
+    @staticmethod
+    def _line_layout(parent: QtWidgets.QWidget, *widgets: QtWidgets.QWidget) -> QtWidgets.QWidget:
+        line_box = QtWidgets.QWidget(parent)
+        line_layout = QtWidgets.QHBoxLayout(line_box)
+        line_layout.setContentsMargins(0, 0, 0, 0)
+        line_box.setLayout(line_layout)
+
+        for w in widgets:
+            w.setParent(line_box)
+            line_layout.addWidget(w)
+
+        line_layout.addStretch(1)
+
+        return line_box
 
     def _update_time(self):
         now = time.time()

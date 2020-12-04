@@ -34,8 +34,28 @@ class Window(Main):
         root_logger = logging.getLogger()
         root_logger.addHandler(self._log_handler)
 
+        self._hook_interface('set_overflow', self._interface_set_overflow)
+        self.overflow_toggle.clicked.connect(self._ui_overflow_toggle)
+
+        self._hook_interface('set_vacuum', self._interface_set_vacuum)
+        self.vacuum_toggle.clicked.connect(self._ui_vacuum_toggle)
+
+        self.trigger_gc.clicked.connect(self._ui_trigger_gc)
+
+        self._hook_interface('select_source', self._interface_select_source)
+        self.apply_source.clicked.connect(self._ui_apply_source)
+
         self.restore_open_files()
         self.restore_output_target()
+
+    def _hook_interface(self, method: str, hook: typing.Callable):
+        original = getattr(self._interface, method)
+
+        def _hooked(*args, **kwargs):
+            hook(*args, **kwargs)
+            return original(*args, **kwargs)
+
+        setattr(self._interface, method, _hooked)
 
     async def _update_inputs(self):
         while True:
@@ -175,6 +195,33 @@ class Window(Main):
         wait_dialog.exec()
 
         event.accept()
+
+    def _interface_set_overflow(self, enable: bool):
+        call_on_ui(lambda: self.overflow_toggle.setChecked(enable))
+
+    def _ui_overflow_toggle(self, checked: bool):
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_overflow(checked)))
+
+    def _interface_set_vacuum(self, enable: bool):
+        call_on_ui(lambda: self.vacuum_toggle.setChecked(enable))
+
+    def _ui_vacuum_toggle(self, checked: bool):
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_vacuum(checked)))
+
+    def _ui_trigger_gc(self, checked: bool):
+        async def _trigger():
+            await self._interface.ready_gc()
+            await asyncio.sleep(1)
+            await self._interface.trigger_gc()
+
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(_trigger()))
+
+    def _interface_select_source(self, index: int, manual: bool = False):
+        call_on_ui(lambda: self.selected_source.setValue(index))
+
+    def _ui_apply_source(self, checked: bool):
+        index = self.selected_source.value()
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.select_source(index, True)))
 
 
 class _Schedule(Execute):
