@@ -215,11 +215,13 @@ class Main(QtWidgets.QMainWindow):
         status_layout.addWidget(self._open_file, 0, 2, 1, 1)
         self._open_file.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_DialogOpenButton))
         self._open_file.clicked.connect(self._add_file)
+        self._open_file.setToolTip("Open task file and add to the available tasks tabs")
         self._close_file = QtWidgets.QPushButton(status_pane)
         status_layout.addWidget(self._close_file, 0, 3, 1, 1)
         self._close_file.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
         self._close_file.setEnabled(False)
         self._close_file.clicked.connect(self._remove_file)
+        self._close_file.setToolTip("Close the selected task tab")
 
         status_layout.addWidget(QtWidgets.QLabel("Output:", status_pane), 1, 0, QtCore.Qt.AlignRight)
         self._selected_output = QtWidgets.QLabel(status_pane)
@@ -230,11 +232,13 @@ class Main(QtWidgets.QMainWindow):
         status_layout.addWidget(self._open_output, 1, 2, 1, 1)
         self._open_output.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_DialogOpenButton))
         self._open_output.clicked.connect(self._set_output)
+        self._open_output.setToolTip("Select an output file to write the log to")
         self._close_output = QtWidgets.QPushButton(status_pane)
         status_layout.addWidget(self._close_output, 1, 3, 1, 1)
         self._close_output.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
         self._close_output.setEnabled(False)
         self._close_output.clicked.connect(self._remove_output)
+        self._close_output.setToolTip("Close the output log file and do not write further to it")
 
         status_layout.addWidget(QtWidgets.QLabel("Task:", status_pane), 2, 0, QtCore.Qt.AlignRight)
         self.current_task = QtWidgets.QLabel(status_pane)
@@ -547,6 +551,7 @@ class Main(QtWidgets.QMainWindow):
             item = task_list.takeItem(index)
             task_list.insertItem(index-1, item)
             task_list.setCurrentRow(index-1)
+            save_file()
 
         def task_down():
             index = task_list.currentIndex().row()
@@ -555,6 +560,7 @@ class Main(QtWidgets.QMainWindow):
             item = task_list.takeItem(index)
             task_list.insertItem(index + 1, item)
             task_list.setCurrentRow(index + 1)
+            save_file()
 
         task_list.currentItemChanged.connect(selection_changed)
         add_button.clicked.connect(add_task)
