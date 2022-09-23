@@ -7,6 +7,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from pathlib import Path
 from collections import namedtuple
 
+if typing.TYPE_CHECKING:
+    import gspc.schedule
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -308,14 +311,14 @@ class Main(QtWidgets.QMainWindow):
         inputs_layout.addRow("Pressure (torr):", self.sample_pressure)
 
         self.sample_flow = QtWidgets.QLabel(inputs_pane)
-        self.sample_flow.setText("00.000")
+        self.sample_flow.setText("   0.000")
         self.sample_flow.setFont(monospace)
-        inputs_layout.addRow("Flow (lpm):", self.sample_flow)
+        inputs_layout.addRow("Flow (V):", self.sample_flow)
 
         self.oven_temperature = QtWidgets.QLabel(inputs_pane)
-        self.oven_temperature.setText("0000.0")
+        self.oven_temperature.setText("   0.000")
         self.oven_temperature.setFont(monospace)
-        inputs_layout.addRow("Oven (°C):", self.oven_temperature)
+        inputs_layout.addRow("Oven (V):", self.oven_temperature)
 
         control_pane = QtWidgets.QWidget(central_widget)
         io_display.addTab(control_pane, "Control")
@@ -349,14 +352,14 @@ class Main(QtWidgets.QMainWindow):
         control_layout.addWidget(self._line_layout(control_pane, self.vacuum_toggle))
 
         self.trigger_gc = QtWidgets.QPushButton(control_pane)
-        self.trigger_gc.setText("Trigger GC")
+        self.trigger_gc.setText("Trigger GCMS")
         control_layout.addWidget(self._line_layout(control_pane, self.trigger_gc))
 
-        self.apply_source = QtWidgets.QPushButton(control_pane)
-        self.apply_source.setText("Change Source:")
-        self.selected_source = QtWidgets.QSpinBox(control_pane)
-        self.selected_source.setRange(0, 15)
-        control_layout.addWidget(self._line_layout(control_pane, self.apply_source, self.selected_source))
+        self.apply_ssv = QtWidgets.QPushButton(control_pane)
+        self.apply_ssv.setText("Change SSV:")
+        self.selected_ssv = QtWidgets.QSpinBox(control_pane)
+        self.selected_ssv.setRange(0, 15)
+        control_layout.addWidget(self._line_layout(control_pane, self.apply_ssv, self.selected_ssv))
 
         control_layout.addStretch(1)
 

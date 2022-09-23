@@ -29,6 +29,10 @@ class Display(QtWidgets.QMainWindow):
         self.gc_cyrogen.setFont(monospace)
         central_layout.addRow("GC Cyrogen", self.gc_cyrogen)
 
+        self.cryro_heater = QtWidgets.QLabel("OFF", central_widget)
+        self.cryro_heater.setFont(monospace)
+        central_layout.addRow("Cryo heater", self.cryro_heater)
+
         self.vacuum = QtWidgets.QLabel("OFF", central_widget)
         self.vacuum.setFont(monospace)
         central_layout.addRow("Vacuum", self.vacuum)
@@ -37,21 +41,13 @@ class Display(QtWidgets.QMainWindow):
         self.sample_valve.setFont(monospace)
         central_layout.addRow("Sample valve", self.sample_valve)
 
-        self.load = QtWidgets.QLabel("OFF", central_widget)
-        self.load.setFont(monospace)
-        central_layout.addRow("Load", self.load)
+        self.load_inject = QtWidgets.QLabel("UNSET", central_widget)
+        self.load_inject.setFont(monospace)
+        central_layout.addRow("Load/Inject", self.load_inject)
 
-        self.pre_column = QtWidgets.QLabel("OUT", central_widget)
+        self.pre_column = QtWidgets.QLabel("UNSET", central_widget)
         self.pre_column.setFont(monospace)
         central_layout.addRow("Precolumn", self.pre_column)
-
-        self.gc_solenoid = QtWidgets.QLabel("OFF", central_widget)
-        self.gc_solenoid.setFont(monospace)
-        central_layout.addRow("GC solenoid", self.gc_solenoid)
-
-        self.gc_heater = QtWidgets.QLabel("OFF", central_widget)
-        self.gc_heater.setFont(monospace)
-        central_layout.addRow("GC heater", self.gc_heater)
 
         self.gc_trigger = QtWidgets.QLabel("NONE", central_widget)
         self.gc_trigger.setFont(monospace)
@@ -61,9 +57,9 @@ class Display(QtWidgets.QMainWindow):
         self.overflow.setFont(monospace)
         central_layout.addRow("Overflow", self.overflow)
 
-        self.selected_source = QtWidgets.QLabel("UNSET", central_widget)
-        self.selected_source.setFont(monospace)
-        central_layout.addRow("Source", self.selected_source)
+        self.ssv_position = QtWidgets.QLabel("UNSET", central_widget)
+        self.ssv_position.setFont(monospace)
+        central_layout.addRow("SSV", self.ssv_position)
 
         self.sample_flow = QtWidgets.QDoubleSpinBox(central_widget)
         self.sample_flow.setRange(0, 100)
@@ -77,10 +73,10 @@ class Display(QtWidgets.QMainWindow):
 
         self.oven_temperature = QtWidgets.QDoubleSpinBox(central_widget)
         self.oven_temperature.setRange(-273, 300)
-        self.oven_temperature.setValue(21)
-        central_layout.addRow("GC Oven", self.oven_temperature)
+        self.oven_temperature.setValue(6)
+        central_layout.addRow("Oven", self.oven_temperature)
 
-    def update_gc_trigger(self):
+    def update_gcms_trigger(self):
         self.gc_trigger.setText(QtCore.QDateTime.currentDateTime().toString("hh:mm:ss"))
 
 

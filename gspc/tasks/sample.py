@@ -9,7 +9,6 @@ from gspc.output import CycleData, begin_cycle, complete_cycle, log_message
 from .cyrogen import *
 from .vacuum import *
 from .pressure import *
-from .column import *
 from .temperature import *
 from .flow import *
 from .gc import *
@@ -230,10 +229,9 @@ class Sample(Task):
             RecordLastFlow(interface, schedule, sample_post_origin - 2, data.record_last_flow),
 
             GCReady(interface, schedule, sample_post_origin + 1),
-            GCSolenoidOn(interface, schedule, sample_post_origin + 1),
+            InjectSwitch(interface, schedule, sample_post_origin + 1),
             GCSample(interface, schedule, sample_post_origin + 2),
-            GCHeaterOn(interface, schedule, sample_post_origin + 2),
-            GCSolenoidOff(interface, schedule, sample_post_origin + 3),
+            CryogenTrapHeaterOn(interface, schedule, sample_post_origin + 2),
             HighPressureOff(interface, schedule, sample_post_origin + 3),
             OverflowOff(interface, schedule, sample_post_origin + 3),
 
@@ -245,6 +243,7 @@ class Sample(Task):
         ]
         if origin > 0.0:
             result += [
+                CryogenTrapHeaterOff(interface, schedule, origin - 300),
                 OverflowOff(interface, schedule, origin - 435),
 
                 # Does this make sense? (isn't the flow on here?)

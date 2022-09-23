@@ -31,21 +31,34 @@ class HighPressureOff(Runnable):
 
 
 class LoadSwitch(Runnable):
-    async def _cycle_valve(self):
-        await self.interface.set_load(True)
-        _LOGGER.info("Valve switched to load")
-        await asyncio.sleep(1)
-        await self.interface.set_load(False)
-
     async def execute(self):
-        await self.schedule.start_background(self._cycle_valve())
+        await self.schedule.start_background(self.interface.valve_load())
+        _LOGGER.info("Valve set to LOAD")
 
 
-class SelectSource(Runnable):
+class InjectSwitch(Runnable):
+    async def execute(self):
+        await self.schedule.start_background(self.interface.valve_inject())
+        _LOGGER.info("Valve set to INJECT")
+
+
+class PreColumnIn(Runnable):
+    async def execute(self):
+        await self.schedule.start_background(self.interface.precolumn_in())
+        _LOGGER.info("Precolumn IN line")
+
+
+class PreColumnOut(Runnable):
+    async def execute(self):
+        await self.schedule.start_background(self.interface.precolumn_out())
+        _LOGGER.info("Precolumn OUT of line")
+
+
+class SetSSV(Runnable):
     def __init__(self, interface: Interface, schedule: Execute, origin: float, source: int):
         Runnable.__init__(self, interface, schedule, origin)
         self._source = source
 
     async def execute(self):
-        await self.interface.select_source(self._source)
-        _LOGGER.debug(f"Selected source {self._source}")
+        await self.interface.set_ssv(self._source)
+        _LOGGER.debug(f"SSV set to {self._source}")

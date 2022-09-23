@@ -56,10 +56,10 @@ class Flask(Sample):
         ]
         if origin > 0.0:
             result += [
-                SelectSource(interface, schedule, origin - 814, self._selection),
+                SetSSV(interface, schedule, origin - 814, self._selection),
                 FeedbackFlow(interface, schedule, origin - 813, INITIAL_FLOW),
 
-                SelectSource(interface, schedule, origin - 435, self._selection),
+                SetSSV(interface, schedule, origin - 435, self._selection),
                 FeedbackFlow(interface, schedule, origin - 425, SAMPLE_FLOW),
 
                 OverflowOn(interface, schedule, origin - 180),
@@ -69,7 +69,7 @@ class Flask(Sample):
             ]
         else:
             result += [
-                SelectSource(interface, schedule, origin, self._selection),
+                SetSSV(interface, schedule, origin, self._selection),
 
                 FeedbackFlow(interface, schedule, origin + 6, INITIAL_FLOW),
             ]

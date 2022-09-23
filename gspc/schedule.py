@@ -3,7 +3,6 @@ import asyncio
 import typing
 import math
 import time
-import types
 from collections import namedtuple
 from gspc.hw.interface import Interface
 from gspc.output import abort_cycle
@@ -277,7 +276,7 @@ class Execute:
         _LOGGER.debug("Schedule processing resume requested")
         self._paused.set_result(False)
 
-    async def start_background(self, execute: types.coroutine) -> asyncio.Task:
+    async def start_background(self, execute: typing.Coroutine) -> asyncio.Task:
         """Start a task in the background, which will be waited for and aborted with the schedule"""
         task = asyncio.create_task(execute)
         self._background_tasks.add(task)

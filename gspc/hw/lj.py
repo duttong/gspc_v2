@@ -57,11 +57,11 @@ class LabJack:
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_write(), self._loop))
 
-    async def read_digital(self, address: int) -> bool:
+    async def read_digital(self, address: str) -> bool:
         """Read a single digital channel."""
 
         async def execute_read() -> bool:
-            cmd = f'FIO{address}'
+            cmd = f'{address}'
             result = ljm.eReadName(self._handle, cmd)
             if result:
                 result = True
@@ -73,7 +73,7 @@ class LabJack:
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
 
-    async def write_digital(self, address: int, state: bool) -> None:
+    async def write_digital(self, address: str, state: bool) -> None:
         """Set a single digital channel."""
         if state:
             state = 1
@@ -81,7 +81,7 @@ class LabJack:
             state = 0
 
         async def execute_write() -> None:
-            cmd = f'FIO{address}'
+            cmd = f'{address}'
             ljm.eWriteName(self._handle, cmd, state)
             if state != 0:
                 _LOGGER.debug(f'Write LabJack digital channel {address}: HIGH')
@@ -107,11 +107,11 @@ if __name__ == '__main__':
     opt = argparse.ArgumentParser(
         description='Basic control of a T7 LabJack'
     )
-    opt.add_argument('--high', action='store', metavar='ADD',
+    opt.add_argument('--high', action='store', metavar='CHANNEL',
                      dest='high', help='Set digital address to high (1)')
-    opt.add_argument('--low', action='store', metavar='ADD',
+    opt.add_argument('--low', action='store', metavar='CHANNEL',
                      dest='low', help='Set digital address to low (0)')
-    opt.add_argument('--tog', action='store', metavar='ADD',
+    opt.add_argument('--tog', action='store', metavar='CHANNEL',
                      dest='tog', help='Toggle digital address from low to high to low for one second')
 
     options = opt.parse_args()
@@ -124,17 +124,17 @@ if __name__ == '__main__':
 
     async def dout():
         if options.high:
-            await t7.write_digital(options.high, 1)
+            await t7.write_digital(options.high, True)
 
         if options.low:
-            await t7.write_digital(options.low, 0)
+            await t7.write_digital(options.low, False)
 
         if options.tog:
-            await t7.write_digital(options.tog, 0)
+            await t7.write_digital(options.tog, False)
             await asyncio.sleep(0.05)
-            await t7.write_digital(options.tog, 1)
+            await t7.write_digital(options.tog, True)
             await asyncio.sleep(1)
-            await t7.write_digital(options.tog, 0)
+            await t7.write_digital(options.tog, False)
 
 
     async def ain():

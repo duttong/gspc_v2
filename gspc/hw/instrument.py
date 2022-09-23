@@ -4,6 +4,8 @@ import logging
 from .interface import Interface
 from .lj import LabJack
 #from .omega import Flow
+from .pressure import Pressure
+from .ssv import SSV
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,33 +15,33 @@ def _clamp(x, minimum, maximum):
 
 
 class Instrument(Interface):
-    AIN_PRESSURE = 1
-    AIN_OVEN_TEMPERATURE = 2
-    AIN_FLOW = 3
+    # AIN_PRESSURE = 11
+    AIN_OVEN_TEMPERATURE = 12
+    AIN_FLOW = 13
 
     AOT_FLOW = 0
 
-    DOT_CRYOGEN = 0
-    DOT_GC_CRYOGEN = 1
-    DOT_VACUUM = 2
-    DOT_SAMPLE = 3
-    DOT_GC_SOLENOID = 4
-    DOT_GC_HEATER = 5
-    DOT_OVERFLOW = 6
-    DOT_LOAD = 7
-    DOT_PRECOLUMN_IN = 8
-    DOT_PRECOLUMN_OUT = 9
-    DOT_STEP_SOURCE_SELECT = 10
-
-    DIN_SELECTED_SOURCE = [11, 12, 13, 14]
+    DOT_LN2_FLOW_TO_CRYO_TRAP = "CIO1"
+    DOT_GC_CRYOGEN = "EIO3"
+    DOT_CLOSE_OFF_VACUUM_PUMP = "CIO2"
+    DOT_ENABLE_SAMPLE_INTO_VACUUM_CHAMBER = "EIO4"
+    DOT_INJECT = "FIO2"
+    DOT_HEAT_CRYO_TRAP = "FIO3"
+    DOT_OVERFLOW = "CIO0"
+    DOT_LOAD = "FIO1"
+    DOT_PRECOLUMN_IN = "FIO6"
+    DOT_PRECOLUMN_OUT = "FIO5"
+    DOT_GCMS_START = "FIO0"
+    DOT_EVAC_PORT_1 = "FIO7"  # PFP sampling
+    DOT_EVAC_PORT_12 = "CIO3"  # PFP sampling
 
     # Source index -> digital channel
     HIGH_PRESSURE_VALVES = {
-        0: 16,
-        2: 9,
-        13: 13,
-        14: 14,
-        15: 15,
+        9: "EIO5",
+        13: "EIO1",
+        14: "EIO0",
+        15: "EIO6",
+        16: "EIO7",
     }
 
     def __init__(self, loop: asyncio.AbstractEventLoop):
@@ -47,39 +49,46 @@ class Instrument(Interface):
 
         self._lj = LabJack()
         #self._flow = Flow()
+        self._pressure = Pressure("COM2")
+        self._ssv = SSV()
 
-        self._selected_source = None
+        self._selected_ssv = None
         self._flow_control_voltage = None
 
     async def get_pressure(self) -> float:
-        return (await self._lj.read_analog(self.AIN_PRESSURE)) * 100.0
+        # return (await self._lj.read_analog(self.AIN_PRESSURE)) * 100.0
+        return await self._pressure.read()
 
-    async def get_oven_temperature(self) -> float:
-        return (await self._lj.read_analog(self.AIN_OVEN_TEMPERATURE)) * 100.0
+    async def get_oven_temperature_signal(self) -> float:
+        return await self._lj.read_analog(self.AIN_OVEN_TEMPERATURE)
 
     async def set_cryogen(self, enable: bool):
-        await self._lj.write_digital(self.DOT_CRYOGEN, enable)
+        await self._lj.write_digital(self.DOT_LN2_FLOW_TO_CRYO_TRAP, enable)
 
     async def set_gc_cryogen(self, enable: bool):
         await self._lj.write_digital(self.DOT_GC_CRYOGEN, enable)
 
     async def set_vacuum(self, enable: bool):
-        await self._lj.write_digital(self.DOT_VACUUM, enable)
+        await self._lj.write_digital(self.DOT_CLOSE_OFF_VACUUM_PUMP, enable)
 
     async def set_sample(self, enable: bool):
-        await self._lj.write_digital(self.DOT_SAMPLE, enable)
+        await self._lj.write_digital(self.DOT_ENABLE_SAMPLE_INTO_VACUUM_CHAMBER, enable)
 
-    async def set_gc_solenoid(self, enable: bool):
-        await self._lj.write_digital(self.DOT_GC_SOLENOID, enable)
-
-    async def set_gc_heater(self, enable: bool):
-        await self._lj.write_digital(self.DOT_GC_HEATER, enable)
+    async def set_cryo_heater(self, enable: bool):
+        await self._lj.write_digital(self.DOT_HEAT_CRYO_TRAP, enable)
 
     async def set_overflow(self, enable: bool):
         await self._lj.write_digital(self.DOT_OVERFLOW, enable)
 
-    async def set_load(self, enable: bool):
-        await self._lj.write_digital(self.DOT_LOAD, enable)
+    async def valve_load(self):
+        await self._lj.write_digital(self.DOT_LOAD, True)
+        await asyncio.sleep(1)
+        await self._lj.write_digital(self.DOT_LOAD, False)
+
+    async def valve_inject(self):
+        await self._lj.write_digital(self.DOT_INJECT, True)
+        await asyncio.sleep(2)
+        await self._lj.write_digital(self.DOT_INJECT, False)
 
     async def precolumn_in(self):
         await self._lj.write_digital(self.DOT_PRECOLUMN_IN, True)
@@ -94,8 +103,8 @@ class Instrument(Interface):
     async def get_flow_control_output(self) -> float:
         return self._flow_control_voltage
 
-    async def get_flow(self) -> float:
-        return (await self._lj.read_analog(self.AIN_FLOW)) * 100.0 + self.sample_flow_zero_offset
+    async def get_flow_signal(self) -> float:
+        return (await self._lj.read_analog(self.AIN_FLOW)) + self.sample_flow_zero_offset
 
     @staticmethod
     def _to_flow_control_voltage(flow: float):
@@ -117,7 +126,7 @@ class Instrument(Interface):
 
         measured_flow = None
         for i in range(15):
-            measured_flow = await self.get_flow()
+            measured_flow = await self.get_flow_signal()
             delta = measured_flow - flow
             if abs(delta) < deadband:
                 return
@@ -140,70 +149,48 @@ class Instrument(Interface):
         self._flow_control_voltage = _clamp(self._flow_control_voltage, 0, 12)
         await self._lj.write_analog(self.AOT_FLOW, self._flow_control_voltage)
 
-    async def _step_source_selector(self):
-        await self._lj.write_digital(self.DOT_STEP_SOURCE_SELECT, False)
-        await asyncio.sleep(0.3)
-        await self._lj.write_digital(self.DOT_STEP_SOURCE_SELECT, True)
-
-    async def _get_selected_source(self):
-        result = 0
-        for i in range(len(self.DIN_SELECTED_SOURCE)):
-            bit = await self._lj.read_digital(self.DIN_SELECTED_SOURCE[i])
-            if not bit:
-                continue
-            result |= (1 << i)
-        return result
-
-    async def _step_to_source(self, index: int):
-        selected = await self._get_selected_source()
-        if selected == index:
-            return True
-
-        # Open overflow if changing the source
-        await self.set_overflow(True)
-
-        timeout = time.time() + 30
-        while timeout < time.time():
-            await self._step_source_selector()
-            await asyncio.sleep(0.3)
-            selected = await self._get_selected_source()
-            if selected == index:
-                return True
-        return False
-
-    async def select_source(self, index: int, manual: bool = False):
+    async def set_ssv(self, index: int, manual: bool = False):
         if manual:
             # Close all high pressure valves
             for _, channel in self.HIGH_PRESSURE_VALVES.items():
                 await self._lj.write_digital(channel, False)
 
-        if not await self._step_to_source(index):
-            _LOGGER.warning(f"Failed to step to source {index}")
+        if (await self._ssv.read()) != index:
+            # Open overflow if changing the position
+            await self.set_overflow(True)
 
-        self._selected_source = index
+            await self._ssv.set(index)
+            for i in range(30):
+                if (await self._ssv.read()) == index:
+                    break
+                await asyncio.sleep(1)
+            else:
+                _LOGGER.warning(f"Failed to change SSV to {index}")
+
+        self._selected_ssv = index
 
         # Open the valve if in manual mode
         if manual:
             await self.set_high_pressure_valve(True)
 
     async def set_high_pressure_valve(self, enable: bool):
-        if self._selected_source is None:
+        if self._selected_ssv is None:
             return
-        channel = self.HIGH_PRESSURE_VALVES.get(self._selected_source)
+        channel = self.HIGH_PRESSURE_VALVES.get(self._selected_ssv)
         if channel is None:
             return
         await self._lj.write_digital(channel, enable)
 
-    async def ready_gc(self):
-        await self._lj.write_digital(11, True)
+    async def ready_gcms(self):
+        await self._lj.write_digital(self.DOT_GCMS_START, True)
 
-    async def trigger_gc(self):
-        await self._lj.write_digital(11, False)
+    async def trigger_gcms(self):
+        await self._lj.write_digital(self.DOT_GCMS_START, False)
 
     async def shutdown(self):
         for _, channel in self.HIGH_PRESSURE_VALVES.items():
             await self._lj.write_digital(channel, False)
-        await self.select_source(2)
+        await self.set_ssv(2)
         await self.set_overflow(True)
         await self.set_flow(3)
         self._flow_control_voltage = None

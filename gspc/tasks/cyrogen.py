@@ -43,3 +43,15 @@ class DisableGCCryogen(Runnable):
     async def execute(self):
         await self.interface.set_gc_cryogen(False)
         _LOGGER.info("Deactivated GC cyrogen")
+
+
+class CryogenTrapHeaterOn(Runnable):
+    async def execute(self):
+        _LOGGER.debug("Cyrogen trap heater ON")
+        await self.interface.set_cryo_heater(True)
+
+
+class CryogenTrapHeaterOff(Runnable):
+    async def execute(self):
+        _LOGGER.debug("Cryogen heater OFF")
+        await self.interface.set_cryo_heater(False)

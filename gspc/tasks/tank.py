@@ -42,10 +42,10 @@ class Tank(Sample):
         ]
         if origin > 0.0:
             result += [
-                SelectSource(interface, schedule, origin - 814, self._selection),
+                SetSSV(interface, schedule, origin - 814, self._selection),
                 FullFlow(interface, schedule, origin - 813),
 
-                SelectSource(interface, schedule, origin - 435, self._selection),
+                SetSSV(interface, schedule, origin - 435, self._selection),
                 FullFlow(interface, schedule, origin - 425),
 
                 FullFlow(interface, schedule, origin - 185),
@@ -55,7 +55,7 @@ class Tank(Sample):
         else:
             result += [
                 OverflowOn(interface, schedule, origin),
-                SelectSource(interface, schedule, origin, self._selection),
+                SetSSV(interface, schedule, origin, self._selection),
                 HighPressureOn(interface, schedule, origin),
             ]
         return result

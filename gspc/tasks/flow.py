@@ -3,7 +3,6 @@ import asyncio
 import time
 import math
 import typing
-import types
 from gspc.hw.interface import Interface
 from gspc.schedule import Runnable, Execute
 
@@ -21,7 +20,7 @@ class ZeroFlow(Runnable):
         flow_sum = 0.0
         flow_count = 0
         while time.time() <= end_time:
-            flow = await self.interface.get_flow()
+            flow = await self.interface.get_flow_signal()
             if flow is not None:
                 flow_sum += flow
                 flow_count += 1
@@ -65,7 +64,7 @@ class FeedbackFlow(Runnable):
 
     async def _feedback_loop(self):
         for iteration in range(15):
-            if abs(await self.interface.get_flow() - self._flow) <= self.DEADBAND:
+            if abs(await self.interface.get_flow_signal() - self._flow) <= self.DEADBAND:
                 return
             await self.interface.adjust_flow(self._flow)
             await asyncio.sleep(self.SETTLING_TIME)
@@ -90,7 +89,7 @@ class MaintainFlow(Runnable):
     async def _monitor_flow(self):
         end_time = time.time() + self._duration
         while time.time() <= end_time and not self._stopped:
-            measured_flow = await self.interface.get_flow()
+            measured_flow = await self.interface.get_flow_signal()
             if self._lower is not None and measured_flow < self._lower:
                 await self.interface.increment_flow(self._flow, 1.0)
                 _LOGGER.info(f"Increased flow")
@@ -124,7 +123,7 @@ class DetectLowFlow(Runnable):
         end_time = time.time() + self._duration
         low_begin_time = None
         while time.time() <= end_time:
-            measured_flow = await self.interface.get_flow()
+            measured_flow = await self.interface.get_flow_signal()
             if measured_flow < self._threshold:
                 if low_begin_time is None:
                     low_begin_time = time.time()
@@ -151,5 +150,5 @@ class RecordLastFlow(Runnable):
         self._record = record
 
     async def execute(self):
-        self._record(await self.interface.get_flow(),
+        self._record(await self.interface.get_flow_signal(),
                      await self.interface.get_flow_control_output())

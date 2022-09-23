@@ -1,6 +1,5 @@
 import asyncio
 import typing
-import types
 
 
 class Interface:
@@ -15,8 +14,8 @@ class Interface:
         """Read the current pressure"""
         pass
 
-    async def get_oven_temperature(self) -> float:
-        """Read the current oven temperature"""
+    async def get_oven_temperature_signal(self) -> float:
+        """Read the current oven temperature signal"""
         pass
 
     async def set_cryogen(self, enable: bool):
@@ -35,11 +34,7 @@ class Interface:
         """Set the sample valve"""
         pass
 
-    async def set_gc_solenoid(self, enable: bool):
-        """Set the GC solenoid"""
-        pass
-
-    async def set_gc_heater(self, enable: bool):
+    async def set_cryo_heater(self, enable: bool):
         """Set the GC heater"""
         pass
 
@@ -47,23 +42,27 @@ class Interface:
         """Set the overflow valve"""
         pass
 
-    async def set_load(self, enable: bool):
-        """Set the load valve"""
+    async def valve_load(self):
+        """Set valve to load position"""
+        pass
+
+    async def valve_inject(self):
+        """Set valve to inject position"""
         pass
 
     async def precolumn_in(self):
-        """Put the pre-column in line"""
+        """Set valve to load pre-column in position"""
         pass
 
     async def precolumn_out(self):
-        """Put the pre-column out of line"""
+        """Set valve to load pre-column out position"""
         pass
 
     async def get_flow_control_output(self) -> float:
         """Get the current flow control value"""
         pass
 
-    async def get_flow(self) -> float:
+    async def get_flow_signal(self) -> float:
         """Read the current flow"""
         pass
 
@@ -79,7 +78,7 @@ class Interface:
         """Perform a flow increment in the direction of the multiplier"""
         pass
 
-    async def select_source(self, index: int, manual: bool = False):
+    async def set_ssv(self, index: int, manual: bool = False):
         """Change the selection valve"""
         pass
 
@@ -87,11 +86,11 @@ class Interface:
         """Set the high pressure valve for the currently selected source"""
         pass
 
-    async def ready_gc(self):
+    async def ready_gcms(self):
         """Prepare for GC trigger"""
         pass
 
-    async def trigger_gc(self):
+    async def trigger_gcms(self):
         """Trigger a GC sample"""
         pass
 

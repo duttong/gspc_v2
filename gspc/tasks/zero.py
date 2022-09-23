@@ -51,7 +51,7 @@ class Zero(Sample):
         ]
         if origin > 0.0:
             result += [
-                SelectSource(interface, schedule, origin - 814, 9),
+                SetSSV(interface, schedule, origin - 814, 9),
                 FeedbackFlow(interface, schedule, origin - 813, INITIAL_FLOW),
 
                 OverflowOn(interface, schedule, origin - 180),
@@ -62,7 +62,7 @@ class Zero(Sample):
         else:
             result += [
                 OverflowOn(interface, schedule, origin),
-                SelectSource(interface, schedule, origin, 9),
+                SetSSV(interface, schedule, origin, 9),
                 HighPressureOn(interface, schedule, origin),
 
                 FeedbackFlow(interface, schedule, origin + 6, INITIAL_FLOW),

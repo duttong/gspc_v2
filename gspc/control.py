@@ -9,6 +9,9 @@ from gspc.util import call_on_ui, LogHandler
 from gspc.output import set_output_name
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+if typing.TYPE_CHECKING:
+    import gspc.ui.simulator
+
 
 class Window(Main):
     """The main control window"""
@@ -42,8 +45,8 @@ class Window(Main):
 
         self.trigger_gc.clicked.connect(self._ui_trigger_gc)
 
-        self._hook_interface('select_source', self._interface_select_source)
-        self.apply_source.clicked.connect(self._ui_apply_source)
+        self._hook_interface('set_ssv', self._interface_set_ssv)
+        self.apply_ssv.clicked.connect(self._ui_apply_ssv)
 
         self.restore_open_files()
         self.restore_output_target()
@@ -59,17 +62,17 @@ class Window(Main):
 
     async def _update_inputs(self):
         while True:
-            sample_flow = await self._interface.get_flow()
+            sample_flow_signal = await self._interface.get_flow_signal()
             sample_pressure = await self._interface.get_pressure()
-            oven_temperature = await self._interface.get_oven_temperature()
+            oven_temperature_signal = await self._interface.get_oven_temperature_signal()
 
             def update_gui():
-                if sample_flow is not None:
-                    self.sample_flow.setText(f"{sample_flow:7.2f}")
+                if sample_flow_signal is not None:
+                    self.sample_flow.setText(f"{sample_flow_signal:8.3f}")
                 if sample_pressure is not None:
                     self.sample_pressure.setText(f"{sample_pressure:6.1f}")
-                if oven_temperature is not None:
-                    self.oven_temperature.setText(f"{oven_temperature: 6.1f}")
+                if oven_temperature_signal is not None:
+                    self.oven_temperature.setText(f"{oven_temperature_signal:8.3f}")
 
             call_on_ui(update_gui)
             await asyncio.sleep(1)
@@ -90,14 +93,14 @@ class Window(Main):
 
         call_on_ui(message_gui)
 
-    def _run_manual_task(self, task: 'gspc.schedule.Task'):
+    def _run_manual_task(self, task: Task):
         if self._active_schedule is not None:
             return
         self._active_schedule = _Schedule([task], self)
         self.set_running(time.time())
         self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._execute_schedule()))
 
-    def start_schedule(self, tasks: typing.Sequence['gspc.schedule.Task']):
+    def start_schedule(self, tasks: typing.Sequence[Task]):
         if self._active_schedule is not None:
             return
         self._active_schedule = _Schedule(tasks, self)
@@ -210,18 +213,18 @@ class Window(Main):
 
     def _ui_trigger_gc(self, checked: bool):
         async def _trigger():
-            await self._interface.ready_gc()
+            await self._interface.ready_gcms()
             await asyncio.sleep(1)
-            await self._interface.trigger_gc()
+            await self._interface.trigger_gcms()
 
         self._loop.call_soon_threadsafe(lambda: self._loop.create_task(_trigger()))
 
-    def _interface_select_source(self, index: int, manual: bool = False):
-        call_on_ui(lambda: self.selected_source.setValue(index))
+    def _interface_set_ssv(self, index: int, manual: bool = False):
+        call_on_ui(lambda: self.selected_ssv.setValue(index))
 
-    def _ui_apply_source(self, checked: bool):
-        index = self.selected_source.value()
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.select_source(index, True)))
+    def _ui_apply_ssv(self, checked: bool):
+        index = self.selected_ssv.value()
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_ssv(index, True)))
 
 
 class _Schedule(Execute):
@@ -290,13 +293,13 @@ class Simulator(Interface):
     async def get_pressure(self) -> float:
         return self.sample_temperature
 
-    async def get_oven_temperature(self) -> float:
+    async def get_oven_temperature_signal(self) -> float:
         return self.oven_temperature
 
     async def set_cryogen(self, enable: bool):
         call_on_ui(lambda: self._display.cyrogen.setText("ON" if enable else "OFF"))
-        if enable and self.oven_temperature > -60:
-            call_on_ui(lambda: self._display.oven_temperature.setValue(-60.0))
+        if enable and self.oven_temperature > 2.0:
+            call_on_ui(lambda: self._display.oven_temperature.setValue(2.0))
 
     async def set_gc_cryogen(self, enable: bool):
         call_on_ui(lambda: self._display.gc_cyrogen.setText("ON" if enable else "OFF"))
@@ -307,19 +310,19 @@ class Simulator(Interface):
     async def set_sample(self, enable: bool):
         call_on_ui(lambda: self._display.sample_valve.setText("ON" if enable else "OFF"))
 
-    async def set_gc_solenoid(self, enable: bool):
-        call_on_ui(lambda: self._display.gc_solenoid.setText("ON" if enable else "OFF"))
-
-    async def set_gc_heater(self, enable: bool):
-        call_on_ui(lambda: self._display.gc_heater.setText("ON" if enable else "OFF"))
-        if enable and self.oven_temperature < 10:
-            call_on_ui(lambda: self._display.oven_temperature.setValue(10.0))
+    async def set_cryo_heater(self, enable: bool):
+        call_on_ui(lambda: self._display.cryro_heater.setText("ON" if enable else "OFF"))
+        if enable and self.oven_temperature < 4.0:
+            call_on_ui(lambda: self._display.oven_temperature.setValue(4.0))
 
     async def set_overflow(self, enable: bool):
         call_on_ui(lambda: self._display.overflow.setText("ON" if enable else "OFF"))
 
-    async def set_load(self, enable: bool):
-        call_on_ui(lambda: self._display.load.setText("ON" if enable else "OFF"))
+    async def valve_load(self):
+        call_on_ui(lambda: self._display.load_inject.setText("LOAD"))
+
+    async def valve_inject(self):
+        call_on_ui(lambda: self._display.load_inject.setText("INJECT"))
 
     async def precolumn_in(self):
         call_on_ui(lambda: self._display.pre_column.setText("IN"))
@@ -330,7 +333,7 @@ class Simulator(Interface):
     async def get_flow_control_output(self) -> float:
         return self.sample_flow
 
-    async def get_flow(self) -> float:
+    async def get_flow_signal(self) -> float:
         return self.sample_flow
 
     async def set_flow(self, flow: float):
@@ -346,17 +349,17 @@ class Simulator(Interface):
 
         call_on_ui(_update)
 
-    async def select_source(self, index: int, manual: bool = False):
+    async def set_ssv(self, index: int, manual: bool = False):
         display = f"{index}"
         if manual:
             self.high_pressure_on = True
         if self.high_pressure_on:
             display += " ON"
-        call_on_ui(lambda: self._display.selected_source.setText(display))
+        call_on_ui(lambda: self._display.ssv_position.setText(display))
 
     async def set_high_pressure_valve(self, enable: bool):
         self.high_pressure_on = enable
 
-    async def trigger_gc(self):
-        call_on_ui(lambda: self._display.update_gc_trigger())
+    async def trigger_gcms(self):
+        call_on_ui(lambda: self._display.update_gcms_trigger())
 
