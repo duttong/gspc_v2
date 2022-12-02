@@ -15,7 +15,7 @@ class Pressure:
             port = self._autodetect()
         else:
             port = serial.Serial(port=port, baudrate=9600,
-                                 timeout=self.TIMEOUT, inter_byte_timeout=0, write_timeout=0, exclusive=False)
+                                 timeout=self.TIMEOUT, inter_byte_timeout=0, write_timeout=0)
         claimed_serial_ports.add(port.port)
         self._port = port
 
@@ -47,7 +47,7 @@ class Pressure:
             if port_info.name in claimed_serial_ports:
                 continue
             port = serial.Serial(port=port_info.name, baudrate=9600,
-                                 timeout=self.TIMEOUT, inter_byte_timeout=0, write_timeout=0, exclusive=False)
+                                 timeout=self.TIMEOUT, inter_byte_timeout=0, write_timeout=0)
             if not self._is_on_port(port):
                 continue
             return port
