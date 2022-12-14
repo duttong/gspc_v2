@@ -1,10 +1,13 @@
 import asyncio
 import logging
+import re
 import typing
 import serial
 import serial.tools.list_ports
 from threading import Thread
 from . import claimed_serial_ports
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class SSV:
@@ -48,14 +51,21 @@ class SSV:
             return port
         raise RuntimeError("SSV not found")
 
+    def _parse_cp(self, str):
+        m = re.search(r'= (\d+)', str)
+        if m is None:
+            return 0
+        return m.group(1)
+
     async def read(self) -> int:
         """Read the current position"""
 
         async def execute_read() -> int:
             self._port.write(b"CP\r")
             v = self._port.readline()
-            v = int(v) - 1
-            return v
+            v = self._parse_cp(v.decode())
+            #return int(v) - 1
+            return int(v)
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
 
@@ -63,7 +73,8 @@ class SSV:
         """Set the current position"""
 
         async def execute_write() -> None:
-            self._port.write(b"GO%d\r" % (pos + 1))
+            #self._port.write(b"GO%d\r" % (pos + 1))
+            self._port.write(b"GO%d\r" % (pos))
             self._port.flushOutput()
             await asyncio.sleep(0.1)
             self._port.flushInput()
