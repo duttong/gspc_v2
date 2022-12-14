@@ -11,15 +11,16 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _clamp(x, minimum, maximum):
+    maximum = 5   # safty GSD 221208
     return max(minimum, min(x, maximum))
 
 
 class Instrument(Interface):
-    # AIN_PRESSURE = 11
-    AIN_OVEN_TEMPERATURE = 12
-    AIN_FLOW = 13
+    # AIN_PRESSURE = 10
+    AIN_OVEN_TEMPERATURE = 11
+    AIN_FLOW = 12
 
-    AOT_FLOW = 0
+    AOT_FLOW = 1
 
     DOT_LN2_FLOW_TO_CRYO_TRAP = "CIO1"
     DOT_GC_CRYOGEN = "EIO3"
@@ -35,9 +36,12 @@ class Instrument(Interface):
     DOT_EVAC_PORT_1 = "FIO7"  # PFP sampling
     DOT_EVAC_PORT_12 = "CIO3"  # PFP sampling
 
+    DOT_ISOVALVE_SSV2 = "EIO5"
+
     # Source index -> digital channel
     HIGH_PRESSURE_VALVES = {
-        9: "EIO5",
+        2: DOT_ISOVALVE_SSV2,
+        9: DOT_ISOVALVE_SSV2,
         13: "EIO1",
         14: "EIO0",
         15: "EIO6",
@@ -50,10 +54,12 @@ class Instrument(Interface):
         self._lj = LabJack()
         #self._flow = Flow()
         self._pressure = Pressure("COM2")
-        self._ssv = SSV()
+        self._ssv = SSV("COM1")
 
         self._selected_ssv = None
         self._flow_control_voltage = None
+
+        #await self.startup()
 
     async def get_pressure(self) -> float:
         # return (await self._lj.read_analog(self.AIN_PRESSURE)) * 100.0
@@ -179,7 +185,8 @@ class Instrument(Interface):
         channel = self.HIGH_PRESSURE_VALVES.get(self._selected_ssv)
         if channel is None:
             return
-        await self._lj.write_digital(channel, enable)
+        else:
+            await self._lj.write_digital(channel, enable)
 
     async def ready_gcms(self):
         await self._lj.write_digital(self.DOT_GCMS_START, True)
@@ -187,10 +194,19 @@ class Instrument(Interface):
     async def trigger_gcms(self):
         await self._lj.write_digital(self.DOT_GCMS_START, False)
 
+    async def startup(self):
+        # set digital out channel 0-19 low
+        for dig in range(20):
+            await self._lj.write_digital(f"FIO{dig}", False)
+            
+        await self.set_ssv(2)
+        await self.set_high_pressure_valve(True)
+
     async def shutdown(self):
         for _, channel in self.HIGH_PRESSURE_VALVES.items():
             await self._lj.write_digital(channel, False)
         await self.set_ssv(2)
         await self.set_overflow(True)
+        await self.set_high_pressure_valve(True)
         await self.set_flow(3)
         self._flow_control_voltage = None
