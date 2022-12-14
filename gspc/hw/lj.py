@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import asyncio
 import logging
 import typing
@@ -51,7 +49,7 @@ class LabJack:
         """Set a single analog channel."""
 
         async def execute_write() -> None:
-            cmd = f'AOT{address}'
+            cmd = f'DAC{address}'
             ljm.eWriteName(self._handle, cmd, value)
             _LOGGER.debug(f'Write LabJack analog channel {address}: {value:.2f}')
 
@@ -76,9 +74,9 @@ class LabJack:
     async def write_digital(self, address: str, state: bool) -> None:
         """Set a single digital channel."""
         if state:
-            state = 1
-        else:
             state = 0
+        else:
+            state = 1
 
         async def execute_write() -> None:
             cmd = f'{address}'
