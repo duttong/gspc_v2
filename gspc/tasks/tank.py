@@ -28,7 +28,7 @@ class Tank(Sample):
         data.ssv_pos = self._selection
 
         async def low_flow_detected():
-            await interface.set_vacuum(False)
+            await interface.set_overflow(False)
             data.low_flow = "Y"
 
         result = Sample.schedule(self, interface, schedule, origin, data) + [
