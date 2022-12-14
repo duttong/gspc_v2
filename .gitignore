@@ -1,7 +1,7 @@
 /.idea/
 /.spyproject/
 AFLOW26.TXT
-__pycache__/*
+__pycache__/
 /old/*
 /fe3/*
 /venv
