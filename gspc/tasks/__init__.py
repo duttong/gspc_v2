@@ -18,7 +18,7 @@ register_task("Flask 12", Flask(12))
 register_task("Tank 0", Tank(0))
 register_task("Tank 2", Tank(2))
 register_task("Tank 13", Tank(13))
-register_task("Tank 14", Tank(13))
+register_task("Tank 14", Tank(14))
 register_task("Tank 15", Tank(15))
 
 register_task("Zero", Zero())
