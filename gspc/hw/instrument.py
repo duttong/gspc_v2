@@ -179,6 +179,9 @@ class Instrument(Interface):
         if manual:
             await self.set_high_pressure_valve(True)
 
+        # close overflow after moving SSV
+        await self.set_overflow(False)
+
     async def set_high_pressure_valve(self, enable: bool):
         if self._selected_ssv is None:
             return
