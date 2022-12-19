@@ -21,14 +21,14 @@ class WaitForOvenCool(Runnable):
     async def execute(self):
         for i in range(4):
             sig = await self.interface.get_oven_temperature_signal()
-            if sig is not None and sig <= self.REQUIRED_TEMPERATURE_SIGNAL:
+            if sig is not None and sig >= self.REQUIRED_TEMPERATURE_SIGNAL:
                 _LOGGER.info("Oven cooled")
                 if i == 0:
                     return False
                 return True
             if self._cooling_failed:
                 self._cooling_failed()
-            _LOGGER.info(f"Oven temperature too high ({sig:.3f} > {self.REQUIRED_TEMPERATURE_SIGNAL}), waiting for 15 seconds")
+            _LOGGER.info(f"Oven temperature too high ({sig:.3f} < {self.REQUIRED_TEMPERATURE_SIGNAL}), waiting for 15 seconds")
             await asyncio.sleep(15)
 
         _LOGGER.info(f"Oven failed to reach {self.REQUIRED_TEMPERATURE_SIGNAL}, cycle will abort")
