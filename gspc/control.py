@@ -28,6 +28,7 @@ class Window(Main):
             self.add_manual_task(name, lambda task=task: self._run_manual_task(task))
             self.loadable_tasks[name] = task
 
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._initial_inputs()))
         self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._update_inputs()))
 
         self._log_handler = LogHandler(self._log_message)
@@ -60,6 +61,18 @@ class Window(Main):
 
         setattr(self._interface, method, _hooked)
 
+    async def _initial_inputs(self):
+        """ method for reading initial SSV position and updating ui (GSD)"""
+        ssv_position = await self._interface.get_ssv_cp()
+
+        def update_gui():
+            if ssv_position is not None:
+                self.selected_ssv.setValue(ssv_position)
+                self.selected_ssv_in.setText(f"   {ssv_position}")
+
+        call_on_ui(update_gui)
+        await asyncio.sleep(1)
+
     async def _update_inputs(self):
         while True:
             sample_flow_signal = await self._interface.get_flow_signal()
@@ -70,7 +83,7 @@ class Window(Main):
                 if sample_flow_signal is not None:
                     self.sample_flow.setText(f"{sample_flow_signal:8.3f}")
                 if sample_pressure is not None:
-                    self.sample_pressure.setText(f"{sample_pressure:6.1f}")
+                    self.sample_pressure.setText(f"{sample_pressure:8.3f}")
                 if oven_temperature_signal is not None:
                     self.oven_temperature.setText(f"{oven_temperature_signal:8.3f}")
 
@@ -221,6 +234,7 @@ class Window(Main):
 
     def _interface_set_ssv(self, index: int, manual: bool = False):
         call_on_ui(lambda: self.selected_ssv.setValue(index))
+        call_on_ui(lambda: self.selected_ssv_in.setText(f"   {index}"))
 
     def _ui_apply_ssv(self, checked: bool):
         index = self.selected_ssv.value()

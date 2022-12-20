@@ -320,6 +320,11 @@ class Main(QtWidgets.QMainWindow):
         self.oven_temperature.setFont(monospace)
         inputs_layout.addRow("Oven (V):", self.oven_temperature)
 
+        self.selected_ssv_in = QtWidgets.QLabel(inputs_pane)
+        self.selected_ssv_in.setText("   0")
+        self.selected_ssv_in.setFont(monospace)
+        inputs_layout.addRow("SSV:", self.selected_ssv_in)
+
         control_pane = QtWidgets.QWidget(central_widget)
         io_display.addTab(control_pane, "Control")
         control_layout = QtWidgets.QVBoxLayout(control_pane)

@@ -8,7 +8,7 @@ class Interface:
     def __init__(self, loop: asyncio.AbstractEventLoop):
         self._loop = loop
 
-        self.sample_flow_zero_offset: float = 0.0
+        self.sample_flow_zero_offset: float = -1.45
 
     async def get_pressure(self) -> float:
         """Read the current pressure"""
@@ -76,6 +76,10 @@ class Interface:
 
     async def increment_flow(self, flow: float, multiplier: float):
         """Perform a flow increment in the direction of the multiplier"""
+        pass
+
+    async def get_ssv_cp(self):
+        """ Read current SSV position """
         pass
 
     async def set_ssv(self, index: int, manual: bool = False):

@@ -1,5 +1,6 @@
 import asyncio
 import time
+import math
 import logging
 from .interface import Interface
 from .lj import LabJack
@@ -58,8 +59,6 @@ class Instrument(Interface):
 
         self._selected_ssv = None
         self._flow_control_voltage = None
-
-        #await self.startup()
 
     async def get_pressure(self) -> float:
         # return (await self._lj.read_analog(self.AIN_PRESSURE)) * 100.0
@@ -155,11 +154,16 @@ class Instrument(Interface):
         self._flow_control_voltage = _clamp(self._flow_control_voltage, 0, 12)
         await self._lj.write_analog(self.AOT_FLOW, self._flow_control_voltage)
 
+    async def get_ssv_cp(self) -> int:
+        #return 2
+        return await self._ssv.read()
+
     async def set_ssv(self, index: int, manual: bool = False):
         if manual:
             # Close all high pressure valves
             for _, channel in self.HIGH_PRESSURE_VALVES.items():
                 await self._lj.write_digital(channel, False)
+            await self.set_overflow(True)
 
         if (await self._ssv.read()) != index:
             # Open overflow if changing the position
@@ -178,9 +182,12 @@ class Instrument(Interface):
         # Open the valve if in manual mode
         if manual:
             await self.set_high_pressure_valve(True)
+            # set full flow
+            await self.set_flow(math.inf)
 
-        # close overflow after moving SSV
-        await self.set_overflow(False)
+        # close overflow after moving SSV in automatic mode
+        if not manual:
+            await self.set_overflow(False)
 
     async def set_high_pressure_valve(self, enable: bool):
         if self._selected_ssv is None:
@@ -196,14 +203,6 @@ class Instrument(Interface):
 
     async def trigger_gcms(self):
         await self._lj.write_digital(self.DOT_GCMS_START, False)
-
-    async def startup(self):
-        # set digital out channel 0-19 low
-        for dig in range(20):
-            await self._lj.write_digital(f"FIO{dig}", False)
-            
-        await self.set_ssv(2)
-        await self.set_high_pressure_valve(True)
 
     async def shutdown(self):
         for _, channel in self.HIGH_PRESSURE_VALVES.items():
