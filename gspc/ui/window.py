@@ -301,7 +301,7 @@ class Main(QtWidgets.QMainWindow):
         central_layout.addWidget(io_display, 2, 1, 1, -1)
 
         inputs_pane = QtWidgets.QWidget(central_widget)
-        io_display.addTab(inputs_pane, "Input")
+        io_display.addTab(inputs_pane, "Status")
         inputs_layout = QtWidgets.QFormLayout(inputs_pane)
         inputs_pane.setLayout(inputs_layout)
 
