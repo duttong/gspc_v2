@@ -246,8 +246,7 @@ class Sample(Task):
                 CryogenTrapHeaterOff(interface, schedule, origin - 300),
                 OverflowOff(interface, schedule, origin - 435),
 
-                # Does this make sense? (isn't the flow on here?)
-                # ZeroFlow(interface, schedule, origin - 230),
+                ZeroFlow(interface, schedule, origin - 230),
 
                 EnableCryogen(interface, schedule, origin - 100),
                 OverflowOn(interface, schedule, origin - 50),

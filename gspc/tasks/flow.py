@@ -15,7 +15,7 @@ class ZeroFlow(Runnable):
         self._duration = duration
 
     async def _zero_flow(self):
-        self.interface.sample_flow_zero_offset = 0
+        self.interface.sample_flow_zero_offset = 0.0
         end_time = time.time() + self._duration
         flow_sum = 0.0
         flow_count = 0
