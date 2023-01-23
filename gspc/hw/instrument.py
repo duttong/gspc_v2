@@ -2,11 +2,14 @@ import asyncio
 import time
 import math
 import logging
+import typing
+
 from .interface import Interface
 from .lj import LabJack
 #from .omega import Flow
 from .pressure import Pressure
 from .ssv import SSV
+from .pfp import PFP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +52,13 @@ class Instrument(Interface):
         16: "EIO7",
     }
 
+    # Source index -> digital channel
+    # The evacuation is done at PFP position - 1, so these are 1 and 12
+    EVACUATION_VALVES = {
+        0: "EIO8",
+        11: "EIO12",
+    }
+
     def __init__(self, loop: asyncio.AbstractEventLoop):
         Interface.__init__(self, loop)
 
@@ -56,6 +66,15 @@ class Instrument(Interface):
         #self._flow = Flow()
         self._pressure = Pressure("COM2")
         self._ssv = SSV("COM1")
+        self._pfp = {
+            1: PFP("COM3"),
+            12: PFP("COM4"),
+        }
+        # Evacuation aliases
+        self._pfp[0] = self._pfp[1]
+        self._pfp[11] = self._pfp[12]
+        # Default alias
+        self._pfp[None] = self._pfp[1]
 
         self._selected_ssv = None
         self._flow_control_voltage = None
@@ -198,12 +217,40 @@ class Instrument(Interface):
         else:
             await self._lj.write_digital(channel, enable)
 
+    async def set_evacuation_valve(self, enable: bool):
+        if self._selected_ssv is None:
+            return
+        channel = self.EVACUATION_VALVES.get(self._selected_ssv)
+        if channel is None:
+            return
+        else:
+            await self._lj.write_digital(channel, enable)
+
     async def ready_gcms(self):
         await self._lj.write_digital(self.DOT_GCMS_START, True)
 
     async def trigger_gcms(self):
         await self._lj.write_digital(self.DOT_GCMS_START, False)
-        
+
+    async def set_pfp_valve(self, ssv_index: typing.Optional[int], pfp_valve: int, set_open: bool) -> str:
+        if ssv_index is None:
+            ssv_index = self._selected_ssv
+        pfp = self._pfp.get(ssv_index)
+        if pfp is None:
+            return ""
+        if set_open:
+            return await pfp.open_valve(pfp_valve)
+        else:
+            return await pfp.close_valve(pfp_valve)
+
+    async def get_pfp_pressure(self, ssv_index: typing.Optional[int] = None) -> float:
+        if ssv_index is None:
+            ssv_index = self._selected_ssv
+        pfp = self._pfp.get(ssv_index)
+        if pfp is None:
+            return None
+        return await pfp.read_pressure()
+
     async def initialization(self):
         """ This method is called when gspc starts. Sets al of the digio lines
             to low (False). """
@@ -213,9 +260,6 @@ class Instrument(Interface):
         for n in range(0, 8):
             await self._lj.write_digital(f'EIO{n}', False)
             await self._lj.write_digital(f'FIO{n}', False)
-            
-        await self.set_ssv(2)
-        await self.set_overflow(True)
 
     async def shutdown(self):
         await self.initialization()

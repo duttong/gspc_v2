@@ -32,3 +32,34 @@ class MeasurePressure(Runnable):
     async def execute(self):
         await self.schedule.start_background(self._sample_pressure())
         _LOGGER.info("Collecting pressure data")
+
+
+class MeasurePFPPressure(Runnable):
+    def __init__(self, interface: Interface, schedule: Execute, origin: float,
+                 ssv: int, record: typing.Callable[[float], None]):
+        Runnable.__init__(self, interface, schedule, origin)
+        self._record = record
+        self._ssv = ssv
+
+    async def execute(self):
+        pressure = await self.interface.get_pfp_pressure(self._ssv)
+        _LOGGER.debug(f"Measured PFP {self._ssv} pressure {pressure:.1f}")
+        self._record(pressure)
+        _LOGGER.info("Collected PFP pressure data")
+
+
+class CheckPFPEvacuated(Runnable):
+    REQUIRED_PRESSURE_SIGNAL = 2.5
+
+    def __init__(self, interface: Interface, schedule: Execute, origin: float, ssv: int):
+        Runnable.__init__(self, interface, schedule, origin)
+        self._ssv = ssv
+
+    async def execute(self):
+        sig = await self.interface.get_pfp_pressure(self._ssv)
+        if sig is not None and sig < self.REQUIRED_PRESSURE_SIGNAL:
+            _LOGGER.info(f"PFF inlet evacuated ok")
+            return
+        _LOGGER.info(f"PFP inlet pressure too high (f{sig:.3f} > {self.REQUIRED_PRESSURE_SIGNAL}), aborting")
+        await self.schedule.abort("Inlet pressure too high")
+

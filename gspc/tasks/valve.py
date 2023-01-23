@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import typing
 from gspc.hw.interface import Interface
 from gspc.schedule import Runnable, Execute
 
@@ -28,6 +29,18 @@ class HighPressureOff(Runnable):
     async def execute(self):
         await self.interface.set_high_pressure_valve(False)
         _LOGGER.debug("High pressure valve OFF")
+
+
+class EvacuateOn(Runnable):
+    async def execute(self):
+        await self.interface.set_evacuation_valve(True)
+        _LOGGER.debug("Evacuation valve ON")
+
+
+class EvacuateOff(Runnable):
+    async def execute(self):
+        await self.interface.set_evacuation_valve(False)
+        _LOGGER.debug("Evacuation valve OFF")
 
 
 class LoadSwitch(Runnable):
@@ -62,3 +75,41 @@ class SetSSV(Runnable):
     async def execute(self):
         await self.interface.set_ssv(self._source)
         _LOGGER.debug(f"SSV set to {self._source}")
+
+
+class PFPValveOpen(Runnable):
+    def __init__(self, interface: Interface, schedule: Execute, origin: float, ssv: int, pfp_index: int,
+                 record: typing.Optional[typing.Callable[[str], None]] = None):
+        Runnable.__init__(self, interface, schedule, origin)
+        self._ssv = ssv
+        self._pfp_index = pfp_index
+        self._record = record
+
+    async def _manipulate_valve(self):
+        response = await self.interface.set_pfp_valve(self._ssv, self._pfp_index, True)
+        _LOGGER.info(f"PFP{self._ssv} valve {self._pfp_index} OPEN: {response}")
+        if self._record:
+            self._record(response)
+
+    async def execute(self):
+        await self.schedule.start_background(self._manipulate_valve())
+        _LOGGER.debug(f"Setting PFP{self._ssv} valve {self._pfp_index} OPEN")
+
+
+class PFPValveClose(Runnable):
+    def __init__(self, interface: Interface, schedule: Execute, origin: float, ssv: int, pfp_index: int,
+                 record: typing.Optional[typing.Callable[[str], None]] = None):
+        Runnable.__init__(self, interface, schedule, origin)
+        self._ssv = ssv
+        self._pfp_index = pfp_index
+        self._record = record
+
+    async def _manipulate_valve(self):
+        response = await self.interface.set_pfp_valve(self._ssv, self._pfp_index, False)
+        _LOGGER.info(f"PFP{self._ssv} valve {self._pfp_index} CLOSED: {response}")
+        if self._record:
+            self._record(response)
+
+    async def execute(self):
+        await self.schedule.start_background(self._manipulate_valve())
+        _LOGGER.debug(f"Setting PFP{self._ssv} valve {self._pfp_index} CLOSED")

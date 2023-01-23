@@ -4,7 +4,7 @@ import time
 import math
 import typing
 from gspc.hw.interface import Interface
-from gspc.schedule import Runnable, Execute
+from gspc.schedule import Runnable, Execute, AbortPoint
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,6 +52,24 @@ class StaticFlow(Runnable):
     async def execute(self):
         await self.interface.set_flow(self._flow)
         _LOGGER.info(f"Set flow to {self._flow:.1f}")
+
+
+class CheckNegativeFlow(Runnable):
+    def __init__(self, interface: Interface, schedule: Execute, origin: float,
+                 abort_point: typing.Optional[AbortPoint] = None):
+        Runnable.__init__(self, interface, schedule, origin)
+        self._abort_point = abort_point
+
+    async def execute(self):
+        measured_flow = await self.interface.get_flow_signal()
+        if measured_flow >= 0.0:
+            return
+        await self.interface.set_overflow(False)
+        _LOGGER.info(f"Sample flow rate ({measured_flow}) less than zero, cycle will abort")
+        if self._abort_point:
+            await self._abort_point.abort("Negative sample flow")
+        else:
+            await self.schedule.abort("Negative sample flow")
 
 
 class FeedbackFlow(Runnable):

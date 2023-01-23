@@ -77,7 +77,33 @@ class Data(CycleData):
             "%Error1",
             "%Error2",
             "loflocount",
-            "Last vflow"]))
+            "Last vflow",
+            "pfpFlask",
+            "pfpOPEN",
+            "pfpCLOSE",
+            "PRESS #1",
+            "PRESS #2",
+            "PRESS #3",
+        ]))
+
+    def record_fields(self) -> typing.List[str]:
+        net_pressure = self.mean2 - self.mean1
+        pct_error1 = ((self.stddev1 or 0.0) / self.mean1)
+        pct_error2 = ((self.stddev2 or 0.0) / self.mean2)
+        return [
+            f"{net_pressure:.2f}",
+            self.sample_type and f"{self.sample_type}" or "NONE",
+            self.ssv_pos and f"{self.ssv_pos}" or "NONE",
+            self.last_flow and f"{self.last_flow:.2f}" or "NONE",
+            self.low_flow and f"{self.low_flow}" or "N",
+            self.cryo_extra_count and f"{self.cryo_extra_count}" or "0",
+            f"{self.mean1:.2f}",
+            f"{self.mean2:.2f}",
+            f"{pct_error1:.2f}",
+            f"{pct_error2:.2f}",
+            self.low_flow_count and f"{self.low_flow_count}" or "0",
+            self.last_flow_control and f"{self.last_flow_control:.2f}" or "NONE",
+        ]
 
     @staticmethod
     def _log_fields(fields: typing.List[str]):
@@ -96,22 +122,7 @@ class Data(CycleData):
         net_pressure = None
         if self.mean1 and self.mean2:
             net_pressure = self.mean2 - self.mean1
-            pct_error1 = ((self.stddev1 or 0.0) / self.mean1)
-            pct_error2 = ((self.stddev2 or 0.0) / self.mean2)
-            fields += [
-                f"{net_pressure:.2f}",
-                self.sample_type and f"{self.sample_type}" or "NONE",
-                self.ssv_pos and f"{self.ssv_pos}" or "NONE",
-                self.last_flow and f"{self.last_flow:.2f}" or "NONE",
-                self.low_flow and f"{self.low_flow}" or "N",
-                self.cryo_extra_count and f"{self.cryo_extra_count}" or "0",
-                f"{self.mean1:.2f}",
-                f"{self.mean2:.2f}",
-                f"{pct_error1:.2f}",
-                f"{pct_error2:.2f}",
-                self.low_flow_count and f"{self.low_flow_count}" or "0",
-                self.last_flow_control and f"{self.last_flow_control:.2f}" or "NONE",
-            ]
+            fields += self.record_fields()
         else:
             fields.append("INCOMPLETE DATA")
         self.write("\t".join(fields))

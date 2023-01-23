@@ -142,7 +142,7 @@ class _OnOffDisplay(QtCore.QObject):
 
 
 class Main(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, enable_pfp: bool = True):
         QtWidgets.QMainWindow.__init__(self)
         self.setObjectName("GSPC")
         self.setWindowTitle("Process Control")
@@ -310,6 +310,14 @@ class Main(QtWidgets.QMainWindow):
         self.sample_pressure.setFont(monospace)
         inputs_layout.addRow("Pressure (torr):", self.sample_pressure)
 
+        if enable_pfp:
+            self.pfp_pressure = QtWidgets.QLabel(inputs_pane)
+            self.pfp_pressure.setText("0000.00")
+            self.pfp_pressure.setFont(monospace)
+            inputs_layout.addRow("PFP Pressure (torr):", self.pfp_pressure)
+        else:
+            self.pfp_pressure = None
+
         self.sample_flow = QtWidgets.QLabel(inputs_pane)
         self.sample_flow.setText("   0.000")
         self.sample_flow.setFont(monospace)
@@ -324,6 +332,14 @@ class Main(QtWidgets.QMainWindow):
         self.selected_ssv_in.setText("   0")
         self.selected_ssv_in.setFont(monospace)
         inputs_layout.addRow("SSV:", self.selected_ssv_in)
+
+        if enable_pfp:
+            self.selected_pfp_in = QtWidgets.QLabel(inputs_pane)
+            self.selected_pfp_in.setText("   -")
+            self.selected_pfp_in.setFont(monospace)
+            inputs_layout.addRow("PFP:", self.selected_pfp_in)
+        else:
+            self.selected_pfp_in = None
 
         control_pane = QtWidgets.QWidget(central_widget)
         io_display.addTab(control_pane, "Control")
@@ -356,15 +372,37 @@ class Main(QtWidgets.QMainWindow):
         self.vacuum_toggle.setCheckable(True)
         control_layout.addWidget(self._line_layout(control_pane, self.vacuum_toggle))
 
+        self.evacuate_toggle = QtWidgets.QPushButton(control_pane)
+        self.evacuate_toggle.setText("Evacuate")
+        self.evacuate_toggle.setStyleSheet("""
+            QPushButton {
+                background-color: red;
+            }
+            QPushButton:checked {
+                background-color: green;     
+            }
+        """)
+        self.evacuate_toggle.setCheckable(True)
+        control_layout.addWidget(self._line_layout(control_pane, self.evacuate_toggle))
+
         self.trigger_gc = QtWidgets.QPushButton(control_pane)
         self.trigger_gc.setText("Trigger GCMS")
         control_layout.addWidget(self._line_layout(control_pane, self.trigger_gc))
 
         self.apply_ssv = QtWidgets.QPushButton(control_pane)
-        self.apply_ssv.setText("Change SSV:")
+        self.apply_ssv.setText("Change SSV")
         self.selected_ssv = QtWidgets.QSpinBox(control_pane)
         self.selected_ssv.setRange(0, 15)
         control_layout.addWidget(self._line_layout(control_pane, self.apply_ssv, self.selected_ssv))
+        
+        if enable_pfp:
+            self.pfp_open = QtWidgets.QPushButton(control_pane)
+            self.pfp_open.setText("PFP Open")
+            self.pfp_close = QtWidgets.QPushButton(control_pane)
+            self.pfp_close.setText("PFP Close")
+            self.select_pfp = QtWidgets.QSpinBox(control_pane)
+            self.select_pfp.setRange(1, 12)
+            control_layout.addWidget(self._line_layout(control_pane, self.pfp_open, self.pfp_close, self.select_pfp))
 
         control_layout.addStretch(1)
 

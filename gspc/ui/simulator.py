@@ -57,9 +57,17 @@ class Display(QtWidgets.QMainWindow):
         self.overflow.setFont(monospace)
         central_layout.addRow("Overflow", self.overflow)
 
+        self.evacuation = QtWidgets.QLabel("OFF", central_widget)
+        self.evacuation.setFont(monospace)
+        central_layout.addRow("Evacuation", self.evacuation)
+
         self.ssv_position = QtWidgets.QLabel("UNSET", central_widget)
         self.ssv_position.setFont(monospace)
         central_layout.addRow("SSV", self.ssv_position)
+
+        self.pfp_valve = QtWidgets.QLabel("UNSET", central_widget)
+        self.pfp_valve.setFont(monospace)
+        central_layout.addRow("PFP", self.pfp_valve)
 
         self.sample_flow = QtWidgets.QDoubleSpinBox(central_widget)
         self.sample_flow.setRange(0, 100)
@@ -75,6 +83,11 @@ class Display(QtWidgets.QMainWindow):
         self.oven_temperature.setRange(-273, 300)
         self.oven_temperature.setValue(6)
         central_layout.addRow("Oven", self.oven_temperature)
+
+        self.pfp_pressure = QtWidgets.QDoubleSpinBox(central_widget)
+        self.pfp_pressure.setRange(0, 1200)
+        self.pfp_pressure.setValue(850)
+        central_layout.addRow("PFP Pressure", self.pfp_pressure)
 
     def update_gcms_trigger(self):
         self.gc_trigger.setText(QtCore.QDateTime.currentDateTime().toString("hh:mm:ss"))

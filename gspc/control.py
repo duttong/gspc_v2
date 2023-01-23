@@ -44,10 +44,20 @@ class Window(Main):
         self._hook_interface('set_vacuum', self._interface_set_vacuum)
         self.vacuum_toggle.clicked.connect(self._ui_vacuum_toggle)
 
+        self._hook_interface('set_evacuation_valve', self._interface_set_evacuation_valve)
+        self.evacuate_toggle.clicked.connect(self._ui_evacuate_toggle)
+
         self.trigger_gc.clicked.connect(self._ui_trigger_gc)
 
         self._hook_interface('set_ssv', self._interface_set_ssv)
         self.apply_ssv.clicked.connect(self._ui_apply_ssv)
+
+        if self.selected_pfp_in is not None:
+            self._hook_interface('set_pfp_valve', self._interface_set_pfp_valve)
+        if self.pfp_open is not None:
+            self.pfp_open.clicked.connect(self._ui_open_pfp)
+        if self.pfp_close is not None:
+            self.pfp_close.clicked.connect(self._ui_close_pfp)
 
         self.restore_open_files()
         self.restore_output_target()
@@ -78,6 +88,10 @@ class Window(Main):
             sample_flow_signal = await self._interface.get_flow_signal()
             sample_pressure = await self._interface.get_pressure()
             oven_temperature_signal = await self._interface.get_oven_temperature_signal()
+            if self.pfp_pressure is not None:
+                pfp_pressure = await self._interface.get_pfp_pressure()
+            else:
+                pfp_pressure = None
 
             def update_gui():
                 if sample_flow_signal is not None:
@@ -86,6 +100,8 @@ class Window(Main):
                     self.sample_pressure.setText(f"{sample_pressure:8.3f}")
                 if oven_temperature_signal is not None:
                     self.oven_temperature.setText(f"{oven_temperature_signal:8.3f}")
+                if pfp_pressure is not None:
+                    self.pfp_pressure.setText(f"{pfp_pressure:8.3f}")
 
             call_on_ui(update_gui)
             await asyncio.sleep(1)
@@ -224,6 +240,12 @@ class Window(Main):
     def _ui_vacuum_toggle(self, checked: bool):
         self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_vacuum(checked)))
 
+    def _interface_set_evacuation_valve(self, enable: bool):
+        call_on_ui(lambda: self.evacuate_toggle.setChecked(enable))
+
+    def _ui_evacuate_toggle(self, checked: bool):
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_evacuation_valve(checked)))
+
     def _ui_trigger_gc(self, checked: bool):
         async def _trigger():
             await self._interface.ready_gcms()
@@ -236,9 +258,26 @@ class Window(Main):
         call_on_ui(lambda: self.selected_ssv.setValue(index))
         call_on_ui(lambda: self.selected_ssv_in.setText(f"   {index}"))
 
+    def _interface_set_pfp_valve(self, ssv_index: typing.Optional[int], pfp_valve: int, set_open: bool):
+        if self.select_pfp is not None:
+            call_on_ui(lambda: self.select_pfp.setValue(pfp_valve))
+        if self.selected_pfp_in is not None:
+            if set_open:
+                call_on_ui(lambda: self.selected_pfp_in.setText(f"   {pfp_valve}"))
+            else:
+                call_on_ui(lambda: self.selected_pfp_in.setText("   -"))
+
     def _ui_apply_ssv(self, checked: bool):
         index = self.selected_ssv.value()
         self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_ssv(index, True)))
+
+    def _ui_open_pfp(self, checked: bool):
+        index = self.select_pfp.value()
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_pfp_valve(None, index, True)))
+
+    def _ui_close_pfp(self, checked: bool):
+        index = self.select_pfp.value()
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_pfp_valve(None, index, False)))
 
 
 class _Schedule(Execute):
@@ -266,10 +305,12 @@ class Simulator(Interface):
         Interface.__init__(self, loop)
         self._display = display
 
-        self.sample_temperature = None
+        self.sample_pressure = None
         self.sample_flow = None
         self.oven_temperature = None
         self.high_pressure_on = False
+        self.ssv_position = 0
+        self.pfp_pressure = None
 
         self._display.sample_flow.valueChanged.connect(self._sample_flow_changed)
         self._sample_flow_changed()
@@ -279,6 +320,9 @@ class Simulator(Interface):
 
         self._display.oven_temperature.valueChanged.connect(self._oven_temperature_changed)
         self._oven_temperature_changed()
+
+        self._display.pfp_pressure.valueChanged.connect(self._pfp_pressure_changed)
+        self._pfp_pressure_changed()
 
     def _sample_flow_changed(self):
         value = self._display.sample_flow.value()
@@ -292,7 +336,15 @@ class Simulator(Interface):
         value = self._display.sample_pressure.value()
 
         def _update():
-            self.sample_temperature = value
+            self.sample_pressure = value
+
+        self._loop.call_soon_threadsafe(_update)
+
+    def _pfp_pressure_changed(self):
+        value = self._display.pfp_pressure.value()
+
+        def _update():
+            self.pfp_pressure = value
 
         self._loop.call_soon_threadsafe(_update)
 
@@ -305,15 +357,15 @@ class Simulator(Interface):
         self._loop.call_soon_threadsafe(_update)
 
     async def get_pressure(self) -> float:
-        return self.sample_temperature
+        return self.sample_pressure
 
     async def get_oven_temperature_signal(self) -> float:
         return self.oven_temperature
 
     async def set_cryogen(self, enable: bool):
         call_on_ui(lambda: self._display.cyrogen.setText("ON" if enable else "OFF"))
-        if enable and self.oven_temperature > 2.0:
-            call_on_ui(lambda: self._display.oven_temperature.setValue(2.0))
+        if enable and self.oven_temperature < 4.0:
+            call_on_ui(lambda: self._display.oven_temperature.setValue(4.0))
 
     async def set_gc_cryogen(self, enable: bool):
         call_on_ui(lambda: self._display.gc_cyrogen.setText("ON" if enable else "OFF"))
@@ -326,8 +378,8 @@ class Simulator(Interface):
 
     async def set_cryo_heater(self, enable: bool):
         call_on_ui(lambda: self._display.cryro_heater.setText("ON" if enable else "OFF"))
-        if enable and self.oven_temperature < 4.0:
-            call_on_ui(lambda: self._display.oven_temperature.setValue(4.0))
+        if enable and self.oven_temperature > 2.0:
+            call_on_ui(lambda: self._display.oven_temperature.setValue(2.0))
 
     async def set_overflow(self, enable: bool):
         call_on_ui(lambda: self._display.overflow.setText("ON" if enable else "OFF"))
@@ -369,6 +421,7 @@ class Simulator(Interface):
             self.high_pressure_on = True
         if self.high_pressure_on:
             display += " ON"
+        self.ssv_position = index
         call_on_ui(lambda: self._display.ssv_position.setText(display))
 
     async def set_high_pressure_valve(self, enable: bool):
@@ -376,4 +429,36 @@ class Simulator(Interface):
 
     async def trigger_gcms(self):
         call_on_ui(lambda: self._display.update_gcms_trigger())
+
+    async def get_ssv_cp(self) -> int:
+        return self.ssv_position
+
+    async def set_evacuation_valve(self, enable: bool):
+        call_on_ui(lambda: self._display.evacuation.setText("ON" if enable else "OFF"))
+        if enable and self.pfp_pressure > 2.0:
+            call_on_ui(lambda: self._display.pfp_pressure.setValue(2.0))
+
+    async def set_pfp_valve(self, ssv_index: typing.Optional[int], pfp_valve: int, set_open: bool) -> str:
+        display = f"{pfp_valve}"
+        if set_open:
+            display += " OPEN"
+        else:
+            display += " CLOSE"
+        call_on_ui(lambda: self._display.ssv_position.setText(display))
+        return "OK"
+
+    async def get_pfp_pressure(self, ssv_index: typing.Optional[int] = None) -> float:
+        return self.pfp_pressure
+
+    async def get_pfp_reply(self, ssv_index: typing.Optional[int] = None) -> str:
+        return "OK"
+
+    async def ready_gcms(self):
+        pass
+
+    async def shutdown(self):
+        pass
+
+    async def adjust_flow(self, flow: float):
+        pass
 
