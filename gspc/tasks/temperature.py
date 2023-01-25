@@ -44,7 +44,7 @@ class CheckSampleTemperature(Runnable):
 
     async def execute(self):
         sig = await self.interface.get_oven_temperature_signal()
-        if sig is not None and sig > self.REQUIRED_TEMPERATURE_SIGNAL:
+        if sig is not None and sig < self.REQUIRED_TEMPERATURE_SIGNAL:
             return
-        _LOGGER.info(f"GC temperature too low (f{sig:.3f} < {self.REQUIRED_TEMPERATURE_SIGNAL}), aborting")
+        _LOGGER.info(f"GC temperature too low (f{sig:.3f} > {self.REQUIRED_TEMPERATURE_SIGNAL}), aborting")
         await self.schedule.abort("Oven failed to heat")
