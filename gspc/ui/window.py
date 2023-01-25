@@ -596,7 +596,8 @@ class Main(QtWidgets.QMainWindow):
         self._schedule_control.removeTab(index)
 
     def _set_output(self):
-        filename = QtWidgets.QFileDialog.getOpenFileName(self, "Select Output", "", "Output (*.txt *.xl)")
+        filename = QtWidgets.QFileDialog.getSaveFileName(self, "Select Output", "", "Output (*.txt *.xl)",
+                                                         options=QtWidgets.QFileDialog.DontConfirmOverwrite)
         if filename is None or len(filename) <= 0:
             return
         filename = filename[0]

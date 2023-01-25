@@ -38,7 +38,7 @@ class CycleData:
         with _lock:
             if _data_file is None:
                 return
-            with open(_data_file, "at+") as f:
+            with open(_data_file, "a+") as f:
                 f.write(line)
                 f.write("\n")
 
@@ -47,7 +47,7 @@ class CycleData:
         with _lock:
             if _data_file is None:
                 return
-            with open(_data_file, "at+") as f:
+            with open(_data_file, "a+") as f:
                 if f.tell() != 0:
                     return
                 f.write(line)
