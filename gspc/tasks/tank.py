@@ -54,8 +54,8 @@ class Tank(Sample):
             ]
         else:
             result += [
-                OverflowOn(interface, schedule, origin),
                 SetSSV(interface, schedule, origin, self._selection),
+                OverflowOn(interface, schedule, origin),
                 HighPressureOn(interface, schedule, origin),
             ]
         return result
