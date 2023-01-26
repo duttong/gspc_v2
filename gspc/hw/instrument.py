@@ -203,12 +203,21 @@ class Instrument(Interface):
 
     async def trigger_gcms(self):
         await self._lj.write_digital(self.DOT_GCMS_START, False)
-
-    async def shutdown(self):
-        for _, channel in self.HIGH_PRESSURE_VALVES.items():
-            await self._lj.write_digital(channel, False)
+        
+    async def initialization(self):
+        """ This method is called when gspc starts. Sets al of the dio lines to low. """
+        for n in range(0, 8):
+            # the overflow dig channel is CIO0. Which is set to open (True)
+            if n != 0:
+                await self._lj.write_digital(f'CIO{n}', False)
+            await self._lj.write_digital(f'EIO{n}', False)
+            await self._lj.write_digital(f'FIO{n}', False)
+            
         await self.set_ssv(2)
         await self.set_overflow(True)
+
+    async def shutdown(self):
+        await self.initalization()
         await self.set_high_pressure_valve(True)
         await self.set_flow(3)
         self._flow_control_voltage = None

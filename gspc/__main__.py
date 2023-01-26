@@ -46,6 +46,8 @@ def main():
     else:
         from gspc.hw.instrument import Instrument
         interface = Instrument(loop)
+        loop.call_soon_threadsafe(lambda: loop.create_task(interface.initialization()))
+
 
     window = Window(loop, interface)
     window.show()
