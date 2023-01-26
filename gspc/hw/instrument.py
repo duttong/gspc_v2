@@ -205,11 +205,12 @@ class Instrument(Interface):
         await self._lj.write_digital(self.DOT_GCMS_START, False)
         
     async def initialization(self):
-        """ This method is called when gspc starts. Sets al of the dio lines to low. """
+        """ This method is called when gspc starts. Sets al of the digio lines
+            to low (False). """
+        await self._lj.write_digital(f'CIO1', False)
+        await self._lj.write_digital(f'CIO2', False)
+        await self._lj.write_digital(f'CIO3', False)
         for n in range(0, 8):
-            # the overflow dig channel is CIO0. Which is set to open (True)
-            if n != 0:
-                await self._lj.write_digital(f'CIO{n}', False)
             await self._lj.write_digital(f'EIO{n}', False)
             await self._lj.write_digital(f'FIO{n}', False)
             
@@ -217,7 +218,7 @@ class Instrument(Interface):
         await self.set_overflow(True)
 
     async def shutdown(self):
-        await self.initalization()
+        await self.initialization()
         await self.set_high_pressure_valve(True)
         await self.set_flow(3)
         self._flow_control_voltage = None
