@@ -52,6 +52,9 @@ class Window(Main):
         self._hook_interface('set_ssv', self._interface_set_ssv)
         self.apply_ssv.clicked.connect(self._ui_apply_ssv)
 
+        self._hook_interface('set_flow', self._interface_set_flow)
+        self.apply_flow.clicked.connect(self._ui_apply_flow)
+
         if self.selected_pfp_in is not None:
             self._hook_interface('set_pfp_valve', self._interface_set_pfp_valve)
         if self.pfp_open is not None:
@@ -96,6 +99,7 @@ class Window(Main):
             def update_gui():
                 if sample_flow_signal is not None:
                     self.sample_flow.setText(f"{sample_flow_signal:8.3f}")
+                    self.output_flow_feedback.setText(f"{sample_flow_signal:.3f}")
                 if sample_pressure is not None:
                     self.sample_pressure.setText(f"{sample_pressure:8.3f}")
                 if oven_temperature_signal is not None:
@@ -258,6 +262,9 @@ class Window(Main):
         call_on_ui(lambda: self.selected_ssv.setValue(index))
         call_on_ui(lambda: self.selected_ssv_in.setText(f"   {index}"))
 
+    def _interface_set_flow(self, flow: float):
+        call_on_ui(lambda: self.output_flow.setValue(flow))
+
     def _interface_set_pfp_valve(self, ssv_index: typing.Optional[int], pfp_valve: int, set_open: bool):
         if self.select_pfp is not None:
             call_on_ui(lambda: self.select_pfp.setValue(pfp_valve))
@@ -270,6 +277,10 @@ class Window(Main):
     def _ui_apply_ssv(self, checked: bool):
         index = self.selected_ssv.value()
         self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_ssv(index, True)))
+
+    def _ui_apply_flow(self, checked: bool):
+        flow = self.output_flow.value()
+        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_flow(flow)))
 
     def _ui_open_pfp(self, checked: bool):
         index = self.select_pfp.value()
