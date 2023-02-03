@@ -223,7 +223,7 @@ class Execute:
             # Run it
             use_real_time = await self._execute_run(to_run, completed_origin)
             if self._aborted:
-                _LOGGER.debug("Schedule abort completed")
+                await self._abort_processing()
                 return False
 
             # Change the origin based on the completion time

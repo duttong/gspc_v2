@@ -43,12 +43,12 @@ class PFPData(Data):
 
     def record_fields(self) -> typing.List[str]:
         return Data.record_fields(self) + [
-            self.pfp_index and f"{self.pfp_index}" or "NONE",
-            self.pfp_open and self.pfp_open or "",
-            self.pfp_close and self.pfp_close or "",
-            self.pfp_pressure1 and f"{self.pfp_pressure1:.2f}" or "NONE",
-            self.pfp_pressure2 and f"{self.pfp_pressure2:.2f}" or "NONE",
-            self.pfp_pressure3 and f"{self.pfp_pressure3:.2f}" or "NONE",
+            self.pfp_index is not None and f"{self.pfp_index}" or "NONE",
+            self.pfp_open is not None and self.pfp_open or "NONE",
+            self.pfp_close is not None and self.pfp_close or "NONE",
+            self.pfp_pressure1 is not None and f"{self.pfp_pressure1:.2f}" or "NONE",
+            self.pfp_pressure2 is not None and f"{self.pfp_pressure2:.2f}" or "NONE",
+            self.pfp_pressure3 is not None and f"{self.pfp_pressure3:.2f}" or "NONE",
         ]
 
 

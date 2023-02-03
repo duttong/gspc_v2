@@ -87,22 +87,27 @@ class Data(CycleData):
         ]))
 
     def record_fields(self) -> typing.List[str]:
-        net_pressure = self.mean2 - self.mean1
-        pct_error1 = ((self.stddev1 or 0.0) / self.mean1)
-        pct_error2 = ((self.stddev2 or 0.0) / self.mean2)
+        if self.mean1 and self.mean2:
+            net_pressure = self.mean2 - self.mean1
+            pct_error1 = ((self.stddev1 or 0.0) / self.mean1)
+            pct_error2 = ((self.stddev2 or 0.0) / self.mean2)
+        else:
+            net_pressure = None
+            pct_error1 = None
+            pct_error2 = None
         return [
-            f"{net_pressure:.2f}",
-            self.sample_type and f"{self.sample_type}" or "NONE",
-            self.ssv_pos and f"{self.ssv_pos}" or "NONE",
-            self.last_flow and f"{self.last_flow:.2f}" or "NONE",
-            self.low_flow and f"{self.low_flow}" or "N",
-            self.cryo_extra_count and f"{self.cryo_extra_count}" or "0",
-            f"{self.mean1:.2f}",
-            f"{self.mean2:.2f}",
-            f"{pct_error1:.2f}",
-            f"{pct_error2:.2f}",
-            self.low_flow_count and f"{self.low_flow_count}" or "0",
-            self.last_flow_control and f"{self.last_flow_control:.2f}" or "NONE",
+            net_pressure is not None and f"{net_pressure:.2f}" or "NONE",
+            self.sample_type is not None and f"{self.sample_type}" or "NONE",
+            self.ssv_pos is not None and f"{self.ssv_pos}" or "NONE",
+            self.last_flow is not None and f"{self.last_flow:.2f}" or "NONE",
+            self.low_flow is not None and f"{self.low_flow}" or "N",
+            self.cryo_extra_count is not None and f"{self.cryo_extra_count}" or "0",
+            self.mean1 is not None and f"{self.mean1:.2f}" or "NONE",
+            self.mean2 is not None and f"{self.mean2:.2f}" or "NONE",
+            pct_error1 is not None and f"{pct_error1:.2f}" or "NONE",
+            pct_error2 is not None and f"{pct_error2:.2f}" or "NONE",
+            self.low_flow_count is not None and f"{self.low_flow_count}" or "0",
+            self.last_flow_control is not None and f"{self.last_flow_control:.2f}" or "NONE",
         ]
 
     @staticmethod
@@ -120,11 +125,7 @@ class Data(CycleData):
             self.sample_number and f"{self.sample_number}" or "NONE",
         ]
         net_pressure = None
-        if self.mean1 and self.mean2:
-            net_pressure = self.mean2 - self.mean1
-            fields += self.record_fields()
-        else:
-            fields.append("INCOMPLETE DATA")
+        fields += self.record_fields()
         self.write("\t".join(fields))
 
         log_message("-------------------------------------------------------------")
@@ -154,9 +155,9 @@ class Data(CycleData):
     def abort(self, message: typing.Optional[str] = None):
         self.finish()
         if message is not None:
-            self.write("SAMPLING ABORTED: " + message)
+            log_message("SAMPLING ABORTED: " + message)
         else:
-            self.write("SAMPLING ABORTED")
+            log_message("SAMPLING ABORTED")
 
     def record_pressure_start(self, mean: float, stddev: float, values: typing.List[float]):
         self.mean1 = mean
