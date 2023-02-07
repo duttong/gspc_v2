@@ -1,5 +1,6 @@
 import typing
 import logging
+import asyncio
 from PyQt5 import QtCore
 
 
@@ -24,8 +25,19 @@ def initialize_ui_thread() -> None:
 
 
 def call_on_ui(f: typing.Callable[[], None]) -> None:
-    """Call a function on the the UI thread"""
+    """Call a function on the UI thread"""
     QtCore.QCoreApplication.postEvent(_receiver_object, _CallEvent(f))
+
+
+_background_tasks: typing.Set[asyncio.Task] = set()
+
+
+def background_task(coro: typing.Awaitable) -> asyncio.Task:
+    """Put a task into the background, keeping a reference, so it does not get GCed"""
+    r = asyncio.get_event_loop().create_task(coro)
+    _background_tasks.add(r)
+    r.add_done_callback(lambda task: _background_tasks.discard(r))
+    return r
 
 
 class LogHandler(logging.Handler):

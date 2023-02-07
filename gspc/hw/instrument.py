@@ -66,18 +66,30 @@ class Instrument(Interface):
         #self._flow = Flow()
         self._pressure = Pressure("COM2")
         self._ssv = SSV("COM1")
-        self._pfp = {
-            1: PFP("COM3"),
-            12: PFP("COM4"),
-        }
-        # Evacuation aliases
-        self._pfp[0] = self._pfp[1]
-        self._pfp[11] = self._pfp[12]
-        # Default alias
-        self._pfp[None] = self._pfp[1]
+
+        self._pfp: typing.Dict[typing.Optional[int], PFP] = dict()
+        pfp1: typing.Optional[PFP] = PFP.detect_optional("COM3")
+        if pfp1:
+            self._pfp[1] = pfp1
+            # Evacuation alias
+            self._pfp[0] = pfp1
+            # Default alias
+            self._pfp[None] = pfp1
+        pfp12: typing.Optional[PFP] = PFP.detect_optional("COM4")
+        if pfp12:
+            self._pfp[12] = pfp12
+            # Evacuation alias
+            self._pfp[11] = pfp12
+            if not pfp1:
+                # Default alias
+                self._pfp[None] = pfp12
 
         self._selected_ssv = None
         self._flow_control_voltage = None
+
+    @property
+    def has_pfp(self) -> bool:
+        return len(self._pfp) != 0
 
     async def get_pressure(self) -> float:
         # return (await self._lj.read_analog(self.AIN_PRESSURE)) * 100.0

@@ -142,6 +142,6 @@ if __name__ == '__main__':
             await asyncio.sleep(1)
 
 
-    loop.create_task(dout())
-    loop.create_task(ain())
+    t1 = loop.create_task(dout())
+    t2 = loop.create_task(ain())
     loop.run_forever()

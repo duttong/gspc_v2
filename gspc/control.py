@@ -5,7 +5,7 @@ import logging
 from gspc.ui.window import Main
 from gspc.schedule import Execute, Task, Runnable, known_tasks
 from gspc.hw.interface import Interface
-from gspc.util import call_on_ui, LogHandler
+from gspc.util import call_on_ui, LogHandler, background_task
 from gspc.output import set_output_name
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -18,8 +18,8 @@ class Window(Main):
 
     _schedule_complete = QtCore.pyqtSignal()
 
-    def __init__(self, loop: asyncio.AbstractEventLoop, interface: Interface):
-        Main.__init__(self)
+    def __init__(self, loop: asyncio.AbstractEventLoop, interface: Interface, enable_pfp: bool = True):
+        Main.__init__(self, enable_pfp=enable_pfp)
         self._loop = loop
         self._interface = interface
         self._active_schedule = None
@@ -28,8 +28,35 @@ class Window(Main):
             self.add_manual_task(name, lambda task=task: self._run_manual_task(task))
             self.loadable_tasks[name] = task
 
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._initial_inputs()))
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._update_inputs()))
+        def update_ssv(ssv_position: int) -> None:
+            """ method for reading initial SSV position and updating ui (GSD)"""
+            self.selected_ssv.setValue(ssv_position)
+            self.selected_ssv_in.setText(f"   {ssv_position}")
+
+        self._loop.call_soon_threadsafe(lambda: background_task(self._call_ui_with_result(
+            self._interface.get_ssv_cp, update_ssv
+        )))
+
+        def update_sample_flow_signal(value: float) -> None:
+            self.sample_flow.setText(f"{value:8.3f}")
+            self.output_flow_feedback.setText(f"{value:.3f}")
+
+        self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
+            self._interface.get_flow_signal, update_sample_flow_signal
+        )))
+
+        self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
+            self._interface.get_pressure, lambda value: self.sample_pressure.setText(f"{value:8.3f}")
+        )))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
+            self._interface.get_oven_temperature_signal,
+            lambda value: self.oven_temperature.setText(f"{value:8.3f}")
+        )))
+        if self.pfp_pressure is not None:
+            self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
+                self._interface.get_pfp_pressure,
+                lambda value: self.pfp_pressure.setText(f"{value:8.3f}")
+            )))
 
         self._log_handler = LogHandler(self._log_message)
         log_format = logging.Formatter('%(message)s')
@@ -74,41 +101,25 @@ class Window(Main):
 
         setattr(self._interface, method, _hooked)
 
-    async def _initial_inputs(self):
-        """ method for reading initial SSV position and updating ui (GSD)"""
-        ssv_position = await self._interface.get_ssv_cp()
+    @staticmethod
+    async def _call_ui_with_result(reader: typing.Callable[[], typing.Awaitable[typing.Any]],
+                                   ui_update: typing.Callable[[typing.Any], None]) -> None:
+        value = await reader()
+        if value is None:
+            return
 
-        def update_gui():
-            if ssv_position is not None:
-                self.selected_ssv.setValue(ssv_position)
-                self.selected_ssv_in.setText(f"   {ssv_position}")
+        def call_gui():
+            ui_update(value)
 
-        call_on_ui(update_gui)
-        await asyncio.sleep(1)
+        call_on_ui(call_gui)
 
-    async def _update_inputs(self):
+    @staticmethod
+    async def _repeat_ui_with_result(reader: typing.Callable[[], typing.Awaitable[typing.Any]],
+                                     ui_update: typing.Callable[[typing.Any], None],
+                                     interval: float = 1.0) -> None:
         while True:
-            sample_flow_signal = await self._interface.get_flow_signal()
-            sample_pressure = await self._interface.get_pressure()
-            oven_temperature_signal = await self._interface.get_oven_temperature_signal()
-            if self.pfp_pressure is not None:
-                pfp_pressure = await self._interface.get_pfp_pressure()
-            else:
-                pfp_pressure = None
-
-            def update_gui():
-                if sample_flow_signal is not None:
-                    self.sample_flow.setText(f"{sample_flow_signal:8.3f}")
-                    self.output_flow_feedback.setText(f"{sample_flow_signal:.3f}")
-                if sample_pressure is not None:
-                    self.sample_pressure.setText(f"{sample_pressure:8.3f}")
-                if oven_temperature_signal is not None:
-                    self.oven_temperature.setText(f"{oven_temperature_signal:8.3f}")
-                if pfp_pressure is not None:
-                    self.pfp_pressure.setText(f"{pfp_pressure:8.3f}")
-
-            call_on_ui(update_gui)
-            await asyncio.sleep(1)
+            await Window._call_ui_with_result(reader, ui_update)
+            await asyncio.sleep(interval)
 
     async def _execute_schedule(self):
         abort_message = None
@@ -131,14 +142,14 @@ class Window(Main):
             return
         self._active_schedule = _Schedule([task], self)
         self.set_running(time.time())
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._execute_schedule()))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._execute_schedule()))
 
     def start_schedule(self, tasks: typing.Sequence[Task]):
         if self._active_schedule is not None:
             return
         self._active_schedule = _Schedule(tasks, self)
         self.set_running(time.time())
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._execute_schedule()))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._execute_schedule()))
 
     def stop_schedule(self):
         async def loop_call():
@@ -146,7 +157,7 @@ class Window(Main):
                 return
             await self._active_schedule.abort()
 
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(loop_call()))
+        self._loop.call_soon_threadsafe(lambda: background_task(loop_call()))
 
     def pause_execution(self):
         async def loop_call():
@@ -154,7 +165,7 @@ class Window(Main):
                 return
             await self._active_schedule.pause()
 
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(loop_call()))
+        self._loop.call_soon_threadsafe(lambda: background_task(loop_call()))
 
     def resume_execution(self):
         async def loop_call():
@@ -162,7 +173,7 @@ class Window(Main):
                 return
             await self._active_schedule.resume()
 
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(loop_call()))
+        self._loop.call_soon_threadsafe(lambda: background_task(loop_call()))
 
     def _log_message(self, msg: str, record: logging.LogRecord):
         self.log_event(msg)
@@ -236,19 +247,19 @@ class Window(Main):
         call_on_ui(lambda: self.overflow_toggle.setChecked(enable))
 
     def _ui_overflow_toggle(self, checked: bool):
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_overflow(checked)))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._interface.set_overflow(checked)))
 
     def _interface_set_vacuum(self, enable: bool):
         call_on_ui(lambda: self.vacuum_toggle.setChecked(enable))
 
     def _ui_vacuum_toggle(self, checked: bool):
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_vacuum(checked)))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._interface.set_vacuum(checked)))
 
     def _interface_set_evacuation_valve(self, enable: bool):
         call_on_ui(lambda: self.evacuate_toggle.setChecked(enable))
 
     def _ui_evacuate_toggle(self, checked: bool):
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_evacuation_valve(checked)))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._interface.set_evacuation_valve(checked)))
 
     def _ui_trigger_gc(self, checked: bool):
         async def _trigger():
@@ -256,7 +267,7 @@ class Window(Main):
             await asyncio.sleep(1)
             await self._interface.trigger_gcms()
 
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(_trigger()))
+        self._loop.call_soon_threadsafe(lambda: background_task(_trigger()))
 
     def _interface_set_ssv(self, index: int, manual: bool = False):
         call_on_ui(lambda: self.selected_ssv.setValue(index))
@@ -276,19 +287,19 @@ class Window(Main):
 
     def _ui_apply_ssv(self, checked: bool):
         index = self.selected_ssv.value()
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_ssv(index, True)))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._interface.set_ssv(index, True)))
 
     def _ui_apply_flow(self, checked: bool):
         flow = self.output_flow.value()
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_flow(flow)))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._interface.set_flow(flow)))
 
     def _ui_open_pfp(self, checked: bool):
         index = self.select_pfp.value()
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_pfp_valve(None, index, True)))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._interface.set_pfp_valve(None, index, True)))
 
     def _ui_close_pfp(self, checked: bool):
         index = self.select_pfp.value()
-        self._loop.call_soon_threadsafe(lambda: self._loop.create_task(self._interface.set_pfp_valve(None, index, False)))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._interface.set_pfp_valve(None, index, False)))
 
 
 class _Schedule(Execute):

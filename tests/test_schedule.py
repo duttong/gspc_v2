@@ -206,7 +206,7 @@ def test_schedule_abort():
         nonlocal should_not_set
         should_not_set = True
 
-    loop.create_task(exe.start_background(abort_task()))
+    abort_task = loop.create_task(exe.start_background(abort_task()))
     result = loop.run_until_complete(exe.execute(None))
 
     assert result == False

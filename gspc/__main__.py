@@ -1,8 +1,7 @@
 import sys
 import asyncio
 import logging
-from gspc.util import initialize_ui_thread
-import gspc.tasks
+from gspc.util import initialize_ui_thread, background_task
 from gspc.output import install_output_log_handler
 from threading import Thread, Event
 from PyQt5 import QtWidgets
@@ -37,6 +36,7 @@ def main():
 
     initialize_ui_thread()
 
+    enable_pfp: bool = True
     if "--simulate" in app.arguments():
         from gspc.ui.simulator import Display
         from gspc.control import Simulator
@@ -46,10 +46,10 @@ def main():
     else:
         from gspc.hw.instrument import Instrument
         interface = Instrument(loop)
-        loop.call_soon_threadsafe(lambda: loop.create_task(interface.initialization()))
+        enable_pfp = interface.has_pfp
+        loop.call_soon_threadsafe(lambda: background_task(interface.initialization()))
 
-
-    window = Window(loop, interface)
+    window = Window(loop, interface, enable_pfp=enable_pfp)
     window.show()
 
     install_output_log_handler()
@@ -61,7 +61,7 @@ def main():
         await interface.shutdown()
         shutdown_complete.set()
 
-    loop.call_soon_threadsafe(lambda: loop.create_task(safe_shutdown()))
+    loop.call_soon_threadsafe(lambda: background_task(safe_shutdown()))
     shutdown_complete.wait(30)
     sys.exit(rc)
 

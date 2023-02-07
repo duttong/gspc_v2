@@ -13,18 +13,38 @@ _LOGGER = logging.getLogger(__name__)
 class PFP:
     TIMEOUT = 10
 
-    def __init__(self, port: typing.Optional[str] = None):
-        if port is None:
-            port = self._autodetect()
-        else:
-            port = serial.Serial(port=port, baudrate=9600,
-                                 timeout=self.TIMEOUT, inter_byte_timeout=0, write_timeout=0)
+    def __init__(self, port: typing.Optional[typing.Union[str, serial.Serial]] = None):
+        if not isinstance(port, serial.Serial):
+            if port is None:
+                port = self._autodetect()
+            else:
+                port = serial.Serial(port=port, baudrate=9600,
+                                     timeout=self.TIMEOUT, inter_byte_timeout=0, write_timeout=0)
         claimed_serial_ports.add(port.port)
         self._port = port
 
         self._loop = asyncio.new_event_loop()
         self._thread = Thread(target=self._run, daemon=True)
         self._thread.start()
+
+    @classmethod
+    def detect_optional(cls, port: str) -> typing.Optional["PFP"]:
+        try:
+            port = serial.Serial(port=port, baudrate=9600, timeout=1.0, inter_byte_timeout=0, write_timeout=0)
+        except (ValueError, serial.SerialException, IOError):
+            return None
+        try:
+            if not PFP._get_unload_prompt(port):
+                port.close()
+                return None
+        except IOError:
+            try:
+                port.close()
+            except:
+                pass
+            return None
+        port.timeout = cls.TIMEOUT
+        return cls(port)
 
     def _run(self):
         asyncio.set_event_loop(self._loop)
