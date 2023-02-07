@@ -21,56 +21,56 @@ class Flask(Sample):
         Sample.__init__(self)
         self._selection = selection
 
-    def schedule(self, interface: Interface, schedule: Execute, origin: float,
+    def schedule(self, context: Execute.Context,
                  data: typing.Optional[Data] = None) -> typing.List[Runnable]:
-        sample_origin = origin + SAMPLE_OPEN_AT
-        sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
+        sample_origin = context.origin + SAMPLE_OPEN_AT
+        sample_post_origin = context.origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
         if data is None:
             data = Data()
         data.sample_type = "flask"
         data.ssv_pos = self._selection
 
-        maintain_sample_flow = MaintainFlow(interface, schedule, sample_origin, sample_post_origin,
+        maintain_sample_flow = MaintainFlow(context, sample_origin, sample_post_origin,
                                             SAMPLE_FLOW, LOWER_SAMPLE_FLOW, UPPER_SAMPLE_FLOW)
 
         async def low_flow_detected():
             await maintain_sample_flow.stop()
-            await interface.set_vacuum(False)
+            await context.interface.set_vacuum(False)
             data.low_flow = "Y"
 
-        result = Sample.schedule(self, interface, schedule, origin, data) + [
-            StaticFlow(interface, schedule, origin + 69, SAMPLE_FLOW),
-            FeedbackFlow(interface, schedule, origin + 71, SAMPLE_FLOW),
-            FeedbackFlow(interface, schedule, origin + 111, SAMPLE_FLOW),
-            FeedbackFlow(interface, schedule, origin + 123, SAMPLE_FLOW),
+        result = Sample.schedule(self, context, data) + [
+            StaticFlow(context, context.origin + 69, SAMPLE_FLOW),
+            FeedbackFlow(context, context.origin + 71, SAMPLE_FLOW),
+            FeedbackFlow(context, context.origin + 111, SAMPLE_FLOW),
+            FeedbackFlow(context, context.origin + 123, SAMPLE_FLOW),
 
-            MaintainFlow(interface, schedule, origin + 111, sample_origin,
+            MaintainFlow(context, context.origin + 111, sample_origin,
                          SAMPLE_FLOW, LOWER_SAMPLE_FLOW),
             maintain_sample_flow,
-            DetectLowFlow(interface, schedule, sample_origin + 1, sample_post_origin, SAMPLE_FLOW,
+            DetectLowFlow(context, sample_origin + 1, sample_post_origin, SAMPLE_FLOW,
                           LOW_FLOW_THRESHOLD, 3.0, low_flow_detected),
 
             # Redundant? appears to always happen
-            # OverflowOff(interface, schedule, sample_post_origin + 4),
+            # OverflowOff(context, sample_post_origin + 4),
         ]
-        if origin > 0.0:
+        if context.origin > 0.0:
             result += [
-                SetSSV(interface, schedule, origin - 814, self._selection),
-                FeedbackFlow(interface, schedule, origin - 813, INITIAL_FLOW),
+                SetSSV(context, context.origin - 814, self._selection),
+                FeedbackFlow(context, context.origin - 813, INITIAL_FLOW),
 
-                SetSSV(interface, schedule, origin - 435, self._selection),
-                FeedbackFlow(interface, schedule, origin - 425, SAMPLE_FLOW),
+                SetSSV(context, context.origin - 435, self._selection),
+                FeedbackFlow(context, context.origin - 425, SAMPLE_FLOW),
 
-                OverflowOn(interface, schedule, origin - 180),
-                OverflowOff(interface, schedule, origin - 130),
+                OverflowOn(context, context.origin - 180),
+                OverflowOff(context, context.origin - 130),
 
-                FeedbackFlow(interface, schedule, origin + 6, SAMPLE_FLOW),
+                FeedbackFlow(context, context.origin + 6, SAMPLE_FLOW),
             ]
         else:
             result += [
-                SetSSV(interface, schedule, origin, self._selection),
+                SetSSV(context, context.origin, self._selection),
 
-                FeedbackFlow(interface, schedule, origin + 6, INITIAL_FLOW),
+                FeedbackFlow(context, context.origin + 6, INITIAL_FLOW),
             ]
         return result

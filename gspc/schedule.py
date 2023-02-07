@@ -16,10 +16,9 @@ Event = namedtuple("Event", ["time", "occurred"])
 class Runnable:
     """A component of the sequence that is able to be run"""
 
-    def __init__(self, interface: Interface, schedule: 'Execute', origin: float = -math.inf):
+    def __init__(self, context: 'Execute.Context', origin: float = -math.inf):
         """Create the runnable component."""
-        self.interface = interface
-        self.schedule = schedule
+        self.context = context
         self.origin = origin
         self.set_events: typing.Set[str] = set()
         self.clear_events: typing.Set[str] = set()
@@ -32,9 +31,9 @@ class Runnable:
 class Gate(Runnable):
     """A runnable that can be used to gate the schedule advance, waiting until a set of conditions are ready"""
 
-    def __init__(self, interface: Interface, schedule: 'Execute', origin: float,
+    def __init__(self, context: 'Execute.Context', origin: float,
                  required_ready: typing.Optional[int] = None):
-        Runnable.__init__(self, interface, schedule, origin)
+        Runnable.__init__(self, context, origin)
         self._required_ready = required_ready
         self._futures_waiting: typing.List[asyncio.Future] = list()
         self._total_completed = None
@@ -76,8 +75,8 @@ class Gate(Runnable):
 class AbortPoint(Runnable):
     """A runnable that serves as a future abort point to allow for a deferred sequence abort"""
 
-    def __init__(self, interface: Interface, schedule: 'Execute', origin=-math.inf):
-        Runnable.__init__(self, interface, schedule, origin)
+    def __init__(self, context: 'Execute.Context', origin=-math.inf):
+        Runnable.__init__(self, context, origin)
         self._aborted = False
         self._abort_message = None
 
@@ -90,7 +89,7 @@ class AbortPoint(Runnable):
     async def execute(self):
         if not self._aborted:
             return
-        await self.schedule.abort(self._abort_message)
+        await self.context.schedule.abort(self._abort_message)
 
 
 class Task:
@@ -99,7 +98,7 @@ class Task:
     def __init__(self, origin_advance: float = 0):
         self.origin_advance = origin_advance
 
-    def schedule(self, interface: Interface, schedule: 'Execute', origin: float) -> typing.Sequence[Runnable]:
+    def schedule(self, context: 'Execute.Context') -> typing.Sequence[Runnable]:
         """Return a list of runnable tasks for execution"""
         return list()
 
@@ -115,9 +114,16 @@ def register_task(name: str, task: Task):
 class Execute:
     """The execution handler for a list of tasks"""
 
+    class Context:
+        """The context identifier for a task scheduled for execution"""
+        def __init__(self, interface: Interface, schedule: 'Execute', origin: float):
+            self.interface = interface
+            self.schedule = schedule
+            self.origin = origin
+
     def __init__(self, task_sequence: typing.Sequence[Task]):
         self._tasks = task_sequence
-        self._background_tasks : typing.Set[asyncio.Task] = set()
+        self._background_tasks: typing.Set[asyncio.Task] = set()
         self._aborted = False
         self._paused = None
         self.abort_message = None
@@ -176,7 +182,8 @@ class Execute:
         run = list()
         origin = 0.0
         for task in self._tasks:
-            add = task.schedule(interface, self, origin)
+            context = self.Context(interface, self, origin)
+            add = task.schedule(context)
             run.extend(add)
             origin += task.origin_advance
 

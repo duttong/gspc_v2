@@ -59,123 +59,122 @@ class PFPFlask(Sample):
         self._ssv = ssv_selection
         self._evac_ssv = ssv_selection - 1
 
-    def schedule(self, interface: Interface, schedule: Execute, origin: float,
-                 data: typing.Optional[Data] = None) -> typing.List[Runnable]:
-        sample_origin = origin + SAMPLE_OPEN_AT
-        sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
-        prior_post_origin = origin - CYCLE_SECONDS + SAMPLE_OPEN_AT + SAMPLE_SECONDS
+    def schedule(self, context: Execute.Context, data: typing.Optional[Data] = None) -> typing.List[Runnable]:
+        sample_origin = context.origin + SAMPLE_OPEN_AT
+        sample_post_origin = context.origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
+        prior_post_origin = context.origin - CYCLE_SECONDS + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
         if data is None:
             data = PFPData()
         data.sample_type = "flask"
         data.ssv_pos = self._ssv
         data.pfp_index = self._pfp
-        data.sample_number = int(origin / CYCLE_SECONDS) + 1
+        data.sample_number = int(context.origin / CYCLE_SECONDS) + 1
 
-        maintain_sample_flow = MaintainFlow(interface, schedule, sample_origin, sample_post_origin,
+        maintain_sample_flow = MaintainFlow(context, sample_origin, sample_post_origin,
                                             SAMPLE_FLOW, LOWER_SAMPLE_FLOW, UPPER_SAMPLE_FLOW)
 
         async def low_flow_detected():
             await maintain_sample_flow.stop()
-            await interface.set_overflow(False)
+            await context.interface.set_overflow(False)
             data.low_flow = "Y"
 
-        abort_after_cycle = AbortPoint(interface, schedule, origin + CYCLE_SECONDS)
-        abort_flow_invalid = AbortPoint(interface, schedule, sample_post_origin + 160)
+        abort_after_cycle = AbortPoint(context, context.origin + CYCLE_SECONDS)
+        abort_flow_invalid = AbortPoint(context, sample_post_origin + 160)
         result = [
-            CycleBegin(interface, schedule, origin, data),
+            CycleBegin(context, context.origin, data),
 
-            EnableCryogen(interface, schedule, origin + 1),
-            DisableCryogen(interface, schedule, sample_post_origin - 5),
+            EnableCryogen(context, context.origin + 1),
+            DisableCryogen(context, sample_post_origin - 5),
 
-            SampleOpen(interface, schedule, origin + SAMPLE_OPEN_AT),
-            SampleClose(interface, schedule, sample_post_origin),
+            SampleOpen(context, context.origin + SAMPLE_OPEN_AT),
+            SampleClose(context, sample_post_origin),
 
-            StaticFlow(interface, schedule, origin + 3, INITIAL_FLOW),
+            StaticFlow(context, context.origin + 3, INITIAL_FLOW),
 
-            OverflowOn(interface, schedule, origin + 5),
-            CheckNegativeFlow(interface, schedule, origin + 6, abort_flow_invalid),
-            FeedbackFlow(interface, schedule, origin + 6, INITIAL_FLOW),
+            OverflowOn(context, context.origin + 5),
+            CheckNegativeFlow(context, context.origin + 6, abort_flow_invalid),
+            FeedbackFlow(context, context.origin + 6, INITIAL_FLOW),
 
-            StaticFlow(interface, schedule, origin + 81, INITIAL_FLOW),
-            CheckNegativeFlow(interface, schedule, origin + 83, abort_flow_invalid),
-            FeedbackFlow(interface, schedule, origin + 83, SAMPLE_FLOW),
-            CheckNegativeFlow(interface, schedule, origin + 126, abort_flow_invalid),
-            FeedbackFlow(interface, schedule, origin + 126, SAMPLE_FLOW),
-            StaticFlow(interface, schedule, sample_post_origin + 175, INITIAL_FLOW),  # Should this just be full flow?
-            FullFlow(interface, schedule, sample_post_origin + 176),
+            StaticFlow(context, context.origin + 81, INITIAL_FLOW),
+            CheckNegativeFlow(context, context.origin + 83, abort_flow_invalid),
+            FeedbackFlow(context, context.origin + 83, SAMPLE_FLOW),
+            CheckNegativeFlow(context, context.origin + 126, abort_flow_invalid),
+            FeedbackFlow(context, context.origin + 126, SAMPLE_FLOW),
+            StaticFlow(context, sample_post_origin + 175, INITIAL_FLOW),  # Should this just be full flow?
+            FullFlow(context, sample_post_origin + 176),
 
-            VacuumOn(interface, schedule, origin + 121),
+            VacuumOn(context, context.origin + 121),
 
-            MeasurePressure(interface, schedule, origin + SAMPLE_OPEN_AT - 7, 7, data.record_pressure_start),
+            MeasurePressure(context, context.origin + SAMPLE_OPEN_AT - 7, 7, data.record_pressure_start),
 
-            MaintainFlow(interface, schedule, origin + 111, sample_origin,
+            MaintainFlow(context, context.origin + 111, sample_origin,
                          SAMPLE_FLOW, LOWER_SAMPLE_FLOW),
             maintain_sample_flow,
-            DetectLowFlow(interface, schedule, sample_origin + 1, sample_post_origin, SAMPLE_FLOW,
+            DetectLowFlow(context, sample_origin + 1, sample_post_origin, SAMPLE_FLOW,
                           LOW_FLOW_THRESHOLD, 3.0, low_flow_detected),
 
-            EnableGCCryogen(interface, schedule, sample_post_origin - 240),
-            DisableGCCryogen(interface, schedule, sample_post_origin + 360),
+            EnableGCCryogen(context, sample_post_origin - 240),
+            DisableGCCryogen(context, sample_post_origin + 360),
 
-            PreColumnIn(interface, schedule, sample_post_origin - 120),
-            PreColumnOut(interface, schedule, sample_post_origin + 150),
+            PreColumnIn(context, sample_post_origin - 120),
+            PreColumnOut(context, sample_post_origin + 150),
 
-            PFPValveClose(interface, schedule, sample_post_origin + 30, self._ssv, self._pfp, data.record_pfp_close),
+            PFPValveClose(context, sample_post_origin + 30, self._ssv, self._pfp, data.record_pfp_close),
 
-            WaitForOvenCool(interface, schedule, sample_post_origin - 15,
+            WaitForOvenCool(context, sample_post_origin - 15,
                             data.cryo_extended, abort_after_cycle),
-            RecordLastFlow(interface, schedule, sample_post_origin - 2, data.record_last_flow),
+            RecordLastFlow(context, sample_post_origin - 2, data.record_last_flow),
 
-            GCReady(interface, schedule, sample_post_origin + 1),
-            InjectSwitch(interface, schedule, sample_post_origin + 1),
-            GCSample(interface, schedule, sample_post_origin + 2),
-            CryogenTrapHeaterOn(interface, schedule, sample_post_origin + 2),
-            OverflowOff(interface, schedule, sample_post_origin + 3),
+            GCReady(context, sample_post_origin + 1),
+            InjectSwitch(context, sample_post_origin + 1),
+            GCSample(context, sample_post_origin + 2),
+            CryogenTrapHeaterOn(context, sample_post_origin + 2),
+            OverflowOff(context, sample_post_origin + 3),
 
-            LoadSwitch(interface, schedule, sample_post_origin + 57),
-            VacuumOff(interface, schedule, sample_post_origin + 59),
+            LoadSwitch(context, sample_post_origin + 57),
+            VacuumOff(context, sample_post_origin + 59),
 
-            MeasurePressure(interface, schedule, sample_post_origin + 4, 16, data.record_pressure_end),
-            CheckSampleTemperature(interface, schedule, sample_post_origin + 69),
+            MeasurePressure(context, sample_post_origin + 4, 16, data.record_pressure_end),
+            CheckSampleTemperature(context, sample_post_origin + 69),
 
-            MeasurePFPPressure(interface, schedule, sample_post_origin + 15, self._ssv, data.record_pfp_pressure3),
+            MeasurePFPPressure(context, sample_post_origin + 15, self._ssv, data.record_pfp_pressure3),
 
             abort_flow_invalid,
             abort_after_cycle,
-            CycleEnd(interface, schedule, origin + CYCLE_SECONDS),
+            CycleEnd(context, context.origin + CYCLE_SECONDS),
         ]
         if prior_post_origin > 0.0:
             result += [
                 # Seems redundant (already closed at sample_post_origin+3)
-                OverflowOff(interface, schedule, prior_post_origin + 182),
+                OverflowOff(context, prior_post_origin + 182),
 
-                SetSSV(interface, schedule, prior_post_origin + 182, self._evac_ssv),
-                EvacuateOn(interface, schedule, prior_post_origin + 198),
+                SetSSV(context, prior_post_origin + 182, self._evac_ssv),
+                EvacuateOn(context, prior_post_origin + 198),
             ]
 
-        if origin > 0.0:
+        if context.origin > 0.0:
             result += [
-                SetSSV(interface, schedule, origin - 30, self._ssv),
+                SetSSV(context, context.origin - 30, self._ssv),
 
-                EvacuateOff(interface, schedule, origin - 240),
-                ZeroFlow(interface, schedule, origin - 230),
+                EvacuateOff(context, context.origin - 240),
+                ZeroFlow(context, context.origin - 230),
 
-                CryogenTrapHeaterOff(interface, schedule, origin - 150),
+                CryogenTrapHeaterOff(context, context.origin - 150),
 
-                MeasurePFPPressure(interface, schedule, origin - 123, self._ssv, data.record_pfp_pressure1),
-                MeasurePFPPressure(interface, schedule, origin - 108, self._ssv, data.record_pfp_pressure2),
-                CheckPFPEvacuated(interface, schedule, origin - 120, self._ssv),
+                MeasurePFPPressure(context, context.origin - 123, self._ssv, data.record_pfp_pressure1),
+                MeasurePFPPressure(context, context.origin - 108, self._ssv, data.record_pfp_pressure2),
+                CheckPFPEvacuated(context, context.origin - 120, self._ssv),
 
-                PFPValveOpen(interface, schedule, origin - 115, self._ssv, self._pfp, data.record_pfp_open),
+                PFPValveOpen(context, context.origin - 115, self._ssv, self._pfp, data.record_pfp_open),
             ]
         else:
             result += [
                 # Some failsafes to make sure the initial state on the first sample is sane
-                SetSSV(interface, schedule, origin, self._ssv),
-                EvacuateOff(interface, schedule, origin),
-                # CheckPFPEvacuated(interface, schedule, origin, self._ssv),
+                SetSSV(context, context.origin, self._ssv),
+                EvacuateOff(context, context.origin),
+                # CheckPFPEvacuated(context, context.origin, self._ssv),
 
-                FeedbackFlow(interface, schedule, origin + 6, INITIAL_FLOW),
+                FeedbackFlow(context, context.origin + 6, INITIAL_FLOW),
             ]
         return result

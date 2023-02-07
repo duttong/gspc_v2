@@ -1,14 +1,12 @@
 import pytest
 import asyncio
 import math
-
 import gspc.schedule
 
 
 class BasicRunnable(gspc.schedule.Runnable):
-    def __init__(self, interface: 'gspc.hw.interface.Interface', schedule: gspc.schedule.Execute,
-                 origin: float, target, key, events: dict=dict()):
-        gspc.schedule.Runnable.__init__(self, interface, schedule, origin)
+    def __init__(self, context: gspc.schedule.Execute.Context, origin: float, target, key, events: dict=dict()):
+        gspc.schedule.Runnable.__init__(self, context, origin)
         self._target = target
         self._key = key
         for event, sc in events.items():
@@ -28,8 +26,8 @@ class BasicTask(gspc.schedule.Task):
         self._key = key
         self._events = events
 
-    def schedule(self, interface: 'gspc.hw.interface.Interface', schedule: gspc.schedule.Execute, origin: float):
-        return [BasicRunnable(interface, schedule, origin, self._target, self._key, self._events)]
+    def schedule(self, context: gspc.schedule.Execute.Context):
+        return [BasicRunnable(context, context.origin, self._target, self._key, self._events)]
 
 
 def test_schedule_basic():
@@ -56,9 +54,8 @@ def test_schedule_basic():
 
 
 class GateRunnable(gspc.schedule.Runnable):
-    def __init__(self, interface: 'gspc.hw.interface.Interface', schedule: gspc.schedule.Execute,
-                 origin: float, target, key, gate):
-        gspc.schedule.Runnable.__init__(self, interface, schedule, origin)
+    def __init__(self, context: gspc.schedule.Execute.Context, origin: float, target, key, gate):
+        gspc.schedule.Runnable.__init__(self, context, origin)
         self._target = target
         self._key = key
         self._gate = gate
@@ -73,15 +70,15 @@ class GateTask(gspc.schedule.Task):
         gspc.schedule.Task.__init__(self, origin_advance)
         self._target = target
 
-    def schedule(self, interface: 'gspc.hw.interface.Interface', schedule: gspc.schedule.Execute, origin: float):
-        gate = gspc.schedule.Gate(interface, schedule, origin+0.01)
+    def schedule(self, context: gspc.schedule.Execute.Context):
+        gate = gspc.schedule.Gate(context, context.origin+0.01)
         return [
-            GateRunnable(interface, schedule, origin, self._target, 1, gate.add_gate()),
-            GateRunnable(interface, schedule, origin, self._target, 2, gate.add_gate()),
-            GateRunnable(interface, schedule, origin, self._target, 3, gate.add_gate()),
+            GateRunnable(context, context.origin, self._target, 1, gate.add_gate()),
+            GateRunnable(context, context.origin, self._target, 2, gate.add_gate()),
+            GateRunnable(context, context.origin, self._target, 3, gate.add_gate()),
             gate,
-            BasicRunnable(interface, schedule, origin+0.02, self._target, 3),
-            BasicRunnable(interface, schedule, origin+0.02, self._target, 4),
+            BasicRunnable(context, context.origin+0.02, self._target, 3),
+            BasicRunnable(context, context.origin+0.02, self._target, 4),
         ]
 
 
@@ -106,17 +103,16 @@ def test_schedule_gate():
 
 
 class EventRunnable(gspc.schedule.Runnable):
-    def __init__(self, interface: 'gspc.hw.interface.Interface', schedule: gspc.schedule.Execute,
-                 origin: float, event: str, occurred: bool):
-        gspc.schedule.Runnable.__init__(self, interface, schedule, origin)
+    def __init__(self, context: gspc.schedule.Execute.Context, origin: float, event: str, occurred: bool):
+        gspc.schedule.Runnable.__init__(self, context, origin)
         self._event = event
         self._occurred = occurred
 
     async def execute(self):
         if self._occurred is None:
-            assert self._event not in self.schedule.events
+            assert self._event not in self.context.schedule.events
         else:
-            assert self.schedule.events[self._event].occurred == self._occurred
+            assert self.context.schedule.events[self._event].occurred == self._occurred
 
 
 class EventTask(gspc.schedule.Task):
@@ -125,8 +121,8 @@ class EventTask(gspc.schedule.Task):
         self._event = event
         self._occurred = occurred
 
-    def schedule(self, interface: 'gspc.hw.interface.Interface', schedule: gspc.schedule.Execute, origin: float):
-        return [EventRunnable(interface, schedule, origin, self._event, self._occurred)]
+    def schedule(self, context: gspc.schedule.Execute.Context):
+        return [EventRunnable(context, context.origin, self._event, self._occurred)]
 
 
 def test_schedule_events():
@@ -159,9 +155,9 @@ def test_schedule_events():
 
 
 class AbortRunnable(BasicRunnable):
-    def __init__(self, interface: 'gspc.hw.interface.Interface', schedule: gspc.schedule.Execute,
+    def __init__(self, context: gspc.schedule.Execute.Context,
                  origin: float, target, key, abort: gspc.schedule.AbortPoint, message):
-        BasicRunnable.__init__(self, interface, schedule, origin, target, key)
+        BasicRunnable.__init__(self, context, origin, target, key)
         self._abort = abort
         self._message = message
 
@@ -177,10 +173,10 @@ class AbortTask(gspc.schedule.Task):
         self._key = key
         self._message = message
 
-    def schedule(self, interface: 'gspc.hw.interface.Interface', schedule: gspc.schedule.Execute, origin: float):
-        abort = gspc.schedule.AbortPoint(interface, schedule, origin+0.02)
+    def schedule(self, context: gspc.schedule.Execute.Context):
+        abort = gspc.schedule.AbortPoint(context, context.origin+0.02)
         return [
-            AbortRunnable(interface, schedule, origin, self._target, self._key, abort, self._message),
+            AbortRunnable(context, context.origin, self._target, self._key, abort, self._message),
             abort,
         ]
 

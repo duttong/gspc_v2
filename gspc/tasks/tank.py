@@ -17,8 +17,7 @@ class Tank(Sample):
         Sample.__init__(self)
         self._selection = selection
 
-    def schedule(self, interface: Interface, schedule: Execute, origin: float,
-                 data: typing.Optional[Data] = None) -> typing.List[Runnable]:
+    def schedule(self, context: Execute.Context, data: typing.Optional[Data] = None) -> typing.List[Runnable]:
         sample_origin = origin + SAMPLE_OPEN_AT
         sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
@@ -31,7 +30,7 @@ class Tank(Sample):
             await interface.set_overflow(False)
             data.low_flow = "Y"
 
-        result = Sample.schedule(self, interface, schedule, origin, data) + [
+        result = Sample.schedule(self, context, data) + [
             FullFlow(interface, schedule, origin + 69),
 
             DetectLowFlow(interface, schedule, sample_origin + 1, sample_post_origin, math.inf,

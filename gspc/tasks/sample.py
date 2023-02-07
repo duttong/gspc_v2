@@ -18,22 +18,22 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class SampleOpen(Runnable):
-    def __init__(self, interface: Interface, schedule: Execute, origin: float):
-        Runnable.__init__(self, interface, schedule, origin)
+    def __init__(self, context: Execute.Context, origin: float):
+        Runnable.__init__(self, context, origin)
         self.set_events.add("sample_open")
 
     async def execute(self):
-        await self.interface.set_sample(True)
+        await self.context.interface.set_sample(True)
         _LOGGER.info("Sample valve open")
 
 
 class SampleClose(Runnable):
-    def __init__(self, interface: Interface, schedule: Execute, origin: float):
-        Runnable.__init__(self, interface, schedule, origin)
+    def __init__(self, context: Execute.Context, origin: float):
+        Runnable.__init__(self, context, origin)
         self.set_events.add("sample_close")
 
     async def execute(self):
-        await self.interface.set_sample(False)
+        await self.context.interface.set_sample(False)
         _LOGGER.info("Sample valve closed")
 
 
@@ -178,8 +178,8 @@ class Data(CycleData):
 
 
 class CycleBegin(Runnable):
-    def __init__(self, interface: Interface, schedule: Execute, origin: float, data: Data):
-        Runnable.__init__(self, interface, schedule, origin)
+    def __init__(self, context: Execute.Context, origin: float, data: Data):
+        Runnable.__init__(self, context, origin)
         self.clear_events.add("sample_open")
         self.clear_events.add("sample_close")
         self.clear_events.add("gc_trigger")
@@ -190,8 +190,8 @@ class CycleBegin(Runnable):
 
 
 class CycleEnd(Runnable):
-    def __init__(self, interface: Interface, schedule: Execute, origin: float):
-        Runnable.__init__(self, interface, schedule, origin)
+    def __init__(self, context: Execute.Context, origin: float):
+        Runnable.__init__(self, context, origin)
         self.clear_events.add("sample_open")
         self.clear_events.add("sample_close")
         self.clear_events.add("gc_trigger")
@@ -204,63 +204,62 @@ class Sample(Task):
     def __init__(self):
         Task.__init__(self, CYCLE_SECONDS)
 
-    def schedule(self, interface: Interface, schedule: Execute, origin: float,
-                 data: typing.Optional[Data] = None) -> typing.List[Runnable]:
-        sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
+    def schedule(self, context: Execute.Context, data: typing.Optional[Data] = None) -> typing.List[Runnable]:
+        sample_post_origin = context.origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
         if data is None:
             data = Data()
 
-        data.sample_number = int(origin / CYCLE_SECONDS) + 1
+        data.sample_number = int(context.origin / CYCLE_SECONDS) + 1
 
-        abort_after_cycle = AbortPoint(interface, schedule, origin + CYCLE_SECONDS)
+        abort_after_cycle = AbortPoint(context, context.origin + CYCLE_SECONDS)
         result = [
-            CycleBegin(interface, schedule, origin, data),
+            CycleBegin(context, context.origin, data),
 
-            EnableCryogen(interface, schedule, origin + 1),
-            DisableCryogen(interface, schedule, sample_post_origin - 5),
+            EnableCryogen(context, context.origin + 1),
+            DisableCryogen(context, sample_post_origin - 5),
 
-            CycleVacuum(interface, schedule, origin + 36),
-            VacuumOn(interface, schedule, origin + 120),
-            LoadSwitch(interface, schedule, sample_post_origin + 57),
-            VacuumOff(interface, schedule, sample_post_origin + 59),
+            CycleVacuum(context, context.origin + 36),
+            VacuumOn(context, context.origin + 120),
+            LoadSwitch(context, sample_post_origin + 57),
+            VacuumOff(context, sample_post_origin + 59),
 
-            SampleOpen(interface, schedule, origin + SAMPLE_OPEN_AT),
-            SampleClose(interface, schedule, sample_post_origin),
+            SampleOpen(context, context.origin + SAMPLE_OPEN_AT),
+            SampleClose(context, sample_post_origin),
 
-            PreColumnIn(interface, schedule, sample_post_origin - 120),
-            PreColumnOut(interface, schedule, sample_post_origin + 150),
+            PreColumnIn(context, sample_post_origin - 120),
+            PreColumnOut(context, sample_post_origin + 150),
 
-            EnableGCCryogen(interface, schedule, sample_post_origin - 240),
-            DisableGCCryogen(interface, schedule, sample_post_origin + 360),
+            EnableGCCryogen(context, sample_post_origin - 240),
+            DisableGCCryogen(context, sample_post_origin + 360),
 
-            MeasurePressure(interface, schedule, origin + SAMPLE_OPEN_AT - 7, 7, data.record_pressure_start),
+            MeasurePressure(context, context.origin + SAMPLE_OPEN_AT - 7, 7, data.record_pressure_start),
 
-            WaitForOvenCool(interface, schedule, sample_post_origin - 15,
+            WaitForOvenCool(context, sample_post_origin - 15,
                             data.cryo_extended, abort_after_cycle),
-            RecordLastFlow(interface, schedule, sample_post_origin - 2, data.record_last_flow),
+            RecordLastFlow(context, sample_post_origin - 2, data.record_last_flow),
 
-            GCReady(interface, schedule, sample_post_origin + 1),
-            InjectSwitch(interface, schedule, sample_post_origin + 1),
-            GCSample(interface, schedule, sample_post_origin + 2),
-            CryogenTrapHeaterOn(interface, schedule, sample_post_origin + 2),
-            HighPressureOff(interface, schedule, sample_post_origin + 3),
-            OverflowOff(interface, schedule, sample_post_origin + 3),
+            GCReady(context, sample_post_origin + 1),
+            InjectSwitch(context, sample_post_origin + 1),
+            GCSample(context, sample_post_origin + 2),
+            CryogenTrapHeaterOn(context, sample_post_origin + 2),
+            HighPressureOff(context, sample_post_origin + 3),
+            OverflowOff(context, sample_post_origin + 3),
 
-            MeasurePressure(interface, schedule, sample_post_origin + 4, 16, data.record_pressure_end),
-            CheckSampleTemperature(interface, schedule, sample_post_origin + 69),
+            MeasurePressure(context, sample_post_origin + 4, 16, data.record_pressure_end),
+            CheckSampleTemperature(context, sample_post_origin + 69),
 
             abort_after_cycle,
-            CycleEnd(interface, schedule, origin + CYCLE_SECONDS),
+            CycleEnd(context, context.origin + CYCLE_SECONDS),
         ]
-        if origin > 0.0:
+        if context.origin > 0.0:
             result += [
-                CryogenTrapHeaterOff(interface, schedule, origin - 300),
-                OverflowOff(interface, schedule, origin - 435),
+                CryogenTrapHeaterOff(context, context.origin - 300),
+                OverflowOff(context, context.origin - 435),
 
-                ZeroFlow(interface, schedule, origin - 230),
+                ZeroFlow(context, context.origin - 230),
 
-                EnableCryogen(interface, schedule, origin - 100),
-                OverflowOn(interface, schedule, origin - 50),
+                EnableCryogen(context, context.origin - 100),
+                OverflowOn(context, context.origin - 50),
             ]
         return result
