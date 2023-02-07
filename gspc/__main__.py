@@ -1,6 +1,7 @@
 import sys
 import asyncio
 import logging
+import gspc.tasks
 from gspc.util import initialize_ui_thread, background_task
 from gspc.output import install_output_log_handler
 from threading import Thread, Event
