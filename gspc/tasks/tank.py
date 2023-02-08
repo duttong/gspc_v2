@@ -18,8 +18,8 @@ class Tank(Sample):
         self._selection = selection
 
     def schedule(self, context: Execute.Context, data: typing.Optional[Data] = None) -> typing.List[Runnable]:
-        sample_origin = origin + SAMPLE_OPEN_AT
-        sample_post_origin = origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
+        sample_origin = context.origin + SAMPLE_OPEN_AT
+        sample_post_origin = context.origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
         if data is None:
             data = Data()
@@ -27,34 +27,34 @@ class Tank(Sample):
         data.ssv_pos = self._selection
 
         async def low_flow_detected():
-            await interface.set_overflow(False)
+            await context.interface.set_overflow(False)
             data.low_flow = "Y"
 
         result = Sample.schedule(self, context, data) + [
-            FullFlow(interface, schedule, origin + 69),
+            FullFlow(context, context.origin + 69),
 
-            DetectLowFlow(interface, schedule, sample_origin + 1, sample_post_origin, math.inf,
+            DetectLowFlow(context, sample_origin + 1, sample_post_origin, math.inf,
                           LOW_FLOW_THRESHOLD, None, low_flow_detected),
 
             # Redundant? appears to always happen
-            # OverflowOff(interface, schedule, sample_post_origin + 4),
+            # OverflowOff(context, sample_post_origin + 4),
         ]
-        if origin > 0.0:
+        if context.origin > 0.0:
             result += [
-                SetSSV(interface, schedule, origin - 814, self._selection),
-                FullFlow(interface, schedule, origin - 813),
+                SetSSV(context, context.origin - 814, self._selection),
+                FullFlow(context, context.origin - 813),
 
-                SetSSV(interface, schedule, origin - 435, self._selection),
-                FullFlow(interface, schedule, origin - 425),
+                SetSSV(context, context.origin - 435, self._selection),
+                FullFlow(context, context.origin - 425),
 
-                FullFlow(interface, schedule, origin - 185),
-                OverflowOn(interface, schedule, origin - 180),
-                HighPressureOn(interface, schedule, origin - 180),
+                FullFlow(context, context.origin - 185),
+                OverflowOn(context, context.origin - 180),
+                HighPressureOn(context, context.origin - 180),
             ]
         else:
             result += [
-                SetSSV(interface, schedule, origin, self._selection),
-                OverflowOn(interface, schedule, origin),
-                HighPressureOn(interface, schedule, origin),
+                SetSSV(context, context.origin, self._selection),
+                OverflowOn(context, context.origin),
+                HighPressureOn(context, context.origin),
             ]
         return result

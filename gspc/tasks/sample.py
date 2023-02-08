@@ -186,6 +186,7 @@ class CycleBegin(Runnable):
         self.data = data
 
     async def execute(self):
+        self.context.task_started = True
         begin_cycle(self.data)
 
 
@@ -197,6 +198,7 @@ class CycleEnd(Runnable):
         self.clear_events.add("gc_trigger")
 
     async def execute(self):
+        self.context.task_completed = True
         complete_cycle()
 
 

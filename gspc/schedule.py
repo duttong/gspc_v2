@@ -116,25 +116,32 @@ class Execute:
 
     class Context:
         """The context identifier for a task scheduled for execution"""
-        def __init__(self, interface: Interface, schedule: 'Execute', origin: float):
+        def __init__(self, interface: Interface, schedule: 'Execute', origin: float, task_index: int):
             self.interface = interface
             self.schedule = schedule
             self.origin = origin
+            self.task_index = task_index
+            self.task_started: bool = False
+            self.task_completed: bool = False
+            self.task_activated: bool = False
 
     def __init__(self, task_sequence: typing.Sequence[Task]):
         self._tasks = task_sequence
         self._background_tasks: typing.Set[asyncio.Task] = set()
         self._aborted = False
         self._paused = None
+        self.contexts: typing.List["Execute.Context"] = list()
         self.abort_message = None
         self.events: typing.Dict[str, Event] = dict()
 
-    async def before_run(self, running: Runnable):
-        """Called before the current runnable is executed"""
+    async def state_update(self):
+        """Called when part of the schedule state has changed"""
         pass
 
     async def _execute_run(self, running: Runnable, completed_origin: float) -> typing.Optional[bool]:
         if not math.isfinite(running.origin):
+            running.context.task_activated = True
+            await self.state_update()
             return await running.execute()
 
         delay = running.origin - completed_origin
@@ -148,6 +155,8 @@ class Execute:
             self._paused = None
             _LOGGER.debug("Schedule processing resumed")
 
+        running.context.task_activated = True
+        await self.state_update()
         return await running.execute()
 
     async def _abort_processing(self):
@@ -181,8 +190,10 @@ class Execute:
         """Execute the scheduled tasks."""
         run = list()
         origin = 0.0
-        for task in self._tasks:
-            context = self.Context(interface, self, origin)
+        for i in range(len(self._tasks)):
+            task = self._tasks[i]
+            context = self.Context(interface, self, origin, i)
+            self.contexts.append(context)
             add = task.schedule(context)
             run.extend(add)
             origin += task.origin_advance
@@ -222,7 +233,7 @@ class Execute:
                     self.events[event] = Event(expected_time, False)
 
             # Call the before run so that displays are updated
-            await self.before_run(to_run)
+            await self.state_update()
             if self._aborted:
                 await self._abort_processing()
                 return False

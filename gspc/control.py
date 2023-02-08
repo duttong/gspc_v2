@@ -2,8 +2,9 @@ import typing
 import asyncio
 import time
 import logging
+import enum
 from gspc.ui.window import Main
-from gspc.schedule import Execute, Task, Runnable, known_tasks
+from gspc.schedule import Execute, Task, known_tasks
 from gspc.hw.interface import Interface
 from gspc.util import call_on_ui, LogHandler, background_task
 from gspc.output import set_output_name
@@ -309,13 +310,50 @@ class _Schedule(Execute):
         Execute.__init__(self, task_sequence)
         self._window = window
 
-    async def before_run(self, running: Runnable):
+    async def state_update(self):
         events = dict()
         for key, event in self.events.items():
             events[key] = event
 
+        class State(enum.Enum):
+            COMPLETE = enum.auto()
+            ACTIVE = enum.auto()
+            PREPARING = enum.auto()
+
+        task_state = dict()
+        current_task = None
+        for context in self.contexts:
+            if context.task_completed:
+                task_state[context.task_index] = State.COMPLETE
+            elif context.task_started:
+                task_state[context.task_index] = State.ACTIVE
+                current_task = context.task_index
+            elif context.task_activated:
+                task_state[context.task_index] = State.PREPARING
+
         def update():
             self._window.update_events(events)
+
+            task_list = self._window._schedule_control.currentWidget().findChild(QtWidgets.QListWidget, "FileTasks")
+            if task_list:
+                for i in range(task_list.count()):
+                    state = task_state.get(i)
+                    if state is None:
+                        continue
+                    task_item = task_list.item(i)
+                    task_data = task_item.data(QtCore.Qt.UserRole)
+                    if state == State.COMPLETE:
+                        task_item.setText(f"{task_data.name} - COMPLETE")
+                    elif state == State.ACTIVE:
+                        task_item.setText(f"{task_data.name} - RUNNING")
+                    elif state == State.PREPARING:
+                        task_item.setText(f"{task_data.name} - PREPARE")
+
+                if current_task is not None and current_task < task_list.count():
+                    task_data = task_list.item(current_task).data(QtCore.Qt.UserRole)
+                    self._window.current_task.setText(f"{task_data.name} (#{current_task+1})")
+                else:
+                    self._window.current_task.setText("NONE")
 
         call_on_ui(update)
 

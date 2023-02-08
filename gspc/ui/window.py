@@ -482,6 +482,16 @@ class Main(QtWidgets.QMainWindow):
         self._close_file.setEnabled(not self._run_button.isChecked())
         self._run_button.setEnabled(True)
 
+    def _reset_schedule_text(self):
+        for task_list_index in range(1, self._schedule_control.count()):
+            task_list = self._schedule_control.widget(task_list_index).findChild(QtWidgets.QListWidget, "FileTasks")
+            if task_list is None:
+                continue
+            for i in range(task_list.count()):
+                task_item = task_list.item(i)
+                task_data = task_item.data(QtCore.Qt.UserRole)
+                task_item.setText(task_data.name)
+
     def add_open_file(self, filename: str):
         tabname = Path(filename).stem
 
@@ -781,6 +791,7 @@ class Main(QtWidgets.QMainWindow):
         self._sample.clear()
         self._gc.clear()
         self._schedule_tab_changed()
+        self._reset_schedule_text()
 
     def update_events(self, events: typing.Dict[str, 'gspc.schedule.Event']):
         """Update the events currently active in the schedule"""
