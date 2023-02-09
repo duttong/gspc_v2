@@ -148,6 +148,14 @@ class Window(Main):
     def start_schedule(self, tasks: typing.Sequence[Task]):
         if self._active_schedule is not None:
             return
+
+        task_list = self.current_task_list
+        if task_list:
+            for i in range(task_list.count()):
+                task_item: QtWidgets.QListWidgetItem = task_list.item(i)
+                task_item.setFlags(task_item.flags() & ~QtCore.Qt.ItemIsSelectable)
+            task_list.clearSelection()
+
         self._active_schedule = _Schedule(tasks, self)
         self.set_running(time.time())
         self._loop.call_soon_threadsafe(lambda: background_task(self._execute_schedule()))
@@ -344,10 +352,22 @@ class _Schedule(Execute):
                     task_data = task_item.data(QtCore.Qt.UserRole)
                     if state == State.COMPLETE:
                         task_item.setText(f"{task_data.name} - COMPLETE")
+                        task_item.setFlags(task_item.flags() & ~QtCore.Qt.ItemIsEnabled)
+                        if task_item.flags() & QtCore.Qt.ItemIsSelectable:
+                            task_item.setFlags(task_item.flags() & ~QtCore.Qt.ItemIsSelectable)
+                            task_list.clearSelection()
                     elif state == State.ACTIVE:
                         task_item.setText(f"{task_data.name} - RUNNING")
+                        task_item.setFlags(task_item.flags() & ~QtCore.Qt.ItemIsEnabled)
+                        if task_item.flags() & QtCore.Qt.ItemIsSelectable:
+                            task_item.setFlags(task_item.flags() & ~QtCore.Qt.ItemIsSelectable)
+                            task_list.clearSelection()
                     elif state == State.PREPARING:
                         task_item.setText(f"{task_data.name} - PREPARE")
+                        task_item.setFlags(task_item.flags() & ~QtCore.Qt.ItemIsEnabled)
+                        if task_item.flags() & QtCore.Qt.ItemIsSelectable:
+                            task_item.setFlags(task_item.flags() & ~QtCore.Qt.ItemIsSelectable)
+                            task_list.clearSelection()
 
                 if current_task is not None and current_task < task_list.count():
                     task_data = task_list.item(current_task).data(QtCore.Qt.UserRole)

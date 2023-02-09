@@ -482,15 +482,21 @@ class Main(QtWidgets.QMainWindow):
         self._close_file.setEnabled(not self._run_button.isChecked())
         self._run_button.setEnabled(True)
 
-    def _reset_schedule_text(self):
+    def _reset_schedule_contents(self):
         for task_list_index in range(1, self._schedule_control.count()):
             task_list = self._schedule_control.widget(task_list_index).findChild(QtWidgets.QListWidget, "FileTasks")
             if task_list is None:
                 continue
             for i in range(task_list.count()):
-                task_item = task_list.item(i)
+                task_item: QtWidgets.QListWidgetItem = task_list.item(i)
                 task_data = task_item.data(QtCore.Qt.UserRole)
                 task_item.setText(task_data.name)
+                task_item.setFlags(task_item.flags() | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
+            task_list.clearSelection()
+
+    @property
+    def current_task_list(self) -> typing.Optional[QtWidgets.QListWidget]:
+        return self._schedule_control.currentWidget().findChild(QtWidgets.QListWidget, "FileTasks")
 
     def add_open_file(self, filename: str):
         tabname = Path(filename).stem
@@ -543,6 +549,7 @@ class Main(QtWidgets.QMainWindow):
         add_button = QtWidgets.QPushButton(container)
         layout.addWidget(add_button, 1, 0, 1, 1)
         add_button.setText("Add")
+        add_button.setObjectName("AddFileTask")
 
         up_button = QtWidgets.QPushButton(container)
         layout.addWidget(up_button, 1, 2, 1, 1)
@@ -584,9 +591,25 @@ class Main(QtWidgets.QMainWindow):
         def selection_changed():
             index = task_list.currentIndex().row()
             valid_task = 0 <= index < task_list.count()
-            up_button.setEnabled(valid_task and index > 0)
-            down_button.setEnabled(valid_task and index < (task_list.count()-1))
-            remove_button.setEnabled(valid_task)
+            if not valid_task:
+                up_button.setEnabled(False)
+                down_button.setEnabled(False)
+                remove_button.setEnabled(False)
+                return
+
+            def is_mutable(i: QtWidgets.QListWidgetItem):
+                return bool(i.flags() & QtCore.Qt.ItemIsSelectable)
+
+            task_item = task_list.item(index)
+            if not is_mutable(task_item):
+                up_button.setEnabled(False)
+                down_button.setEnabled(False)
+                remove_button.setEnabled(False)
+                return
+
+            up_button.setEnabled(index > 0 and is_mutable(task_list.item(index-1)))
+            down_button.setEnabled(index < (task_list.count()-1) and is_mutable(task_list.item(index+11)))
+            remove_button.setEnabled(True)
 
         def add_task():
             task_name, ok = QtWidgets.QInputDialog.getItem(self, "Add Task", "Task:", self.loadable_tasks.keys(), 0, False)
@@ -710,7 +733,7 @@ class Main(QtWidgets.QMainWindow):
             item.data(QtCore.Qt.UserRole)()
             return
 
-        task_list = self._schedule_control.currentWidget().findChild(QtWidgets.QListWidget, "FileTasks")
+        task_list = self.current_task_list
         if task_list.count() <= 0:
             return
 
@@ -764,20 +787,37 @@ class Main(QtWidgets.QMainWindow):
 
     def set_running(self, begin_time: typing.Optional[float] = None):
         """Change the display mode for when a schedule is running"""
-        self._schedule_control.setEnabled(False)
+
+        self._schedule_control.tabBar().setEnabled(False)
+        task_list = self.current_task_list
+        if task_list:
+            task_list.clearSelection()
+        add_button = self._schedule_control.currentWidget().findChild(QtWidgets.QPushButton, "AddFileTask")
+        if add_button:
+            add_button.setEnabled(False)
+
         self._pause_button.setChecked(False)
         self._pause_button.setEnabled(True)
         self._run_button.setText("Stop")
         self._run_button.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MediaStop))
         self._run_button.setChecked(True)
         self._close_file.setEnabled(False)
+
         if begin_time is not None:
             self._schedule_begin_time = begin_time
         self._update_elapsed()
 
     def set_stopped(self):
         """Change the display mode for when no schedule is running"""
-        self._schedule_control.setEnabled(True)
+
+        self._schedule_control.tabBar().setEnabled(True)
+        task_list = self.current_task_list
+        if task_list:
+            task_list.clearSelection()
+        add_button = self._schedule_control.currentWidget().findChild(QtWidgets.QPushButton, "AddFileTask")
+        if add_button:
+            add_button.setEnabled(True)
+
         self._pause_button.setEnabled(False)
         self._pause_button.setChecked(False)
         self._run_button.setText("Start")
@@ -785,13 +825,14 @@ class Main(QtWidgets.QMainWindow):
         self._run_button.setChecked(False)
         self._close_file.setEnabled(self._schedule_control.currentIndex() > 0)
         self._schedule_begin_time = None
+
         self.current_task.setText("NONE")
         self._update_elapsed()
         self._cyrogen.clear()
         self._sample.clear()
         self._gc.clear()
         self._schedule_tab_changed()
-        self._reset_schedule_text()
+        self._reset_schedule_contents()
 
     def update_events(self, events: typing.Dict[str, 'gspc.schedule.Event']):
         """Update the events currently active in the schedule"""
