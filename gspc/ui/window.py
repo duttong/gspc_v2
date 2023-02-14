@@ -260,12 +260,12 @@ class Main(QtWidgets.QMainWindow):
         self._elapsed_updater.setSingleShot(True)
         self._elapsed_updater.timeout.connect(self._update_elapsed)
 
-        status_layout.addWidget(QtWidgets.QLabel("Cyrogen:", status_pane), 4, 0, QtCore.Qt.AlignRight)
-        cyrogen = QtWidgets.QLabel(status_pane)
-        cyrogen.setFont(monospace)
-        cyrogen.setText("NONE")
-        status_layout.addWidget(cyrogen, 4, 1, 1, -1, QtCore.Qt.AlignLeft)
-        self._cyrogen = _InstantDisplay(cyrogen, self)
+        status_layout.addWidget(QtWidgets.QLabel("Cryogen:", status_pane), 4, 0, QtCore.Qt.AlignRight)
+        cryogen = QtWidgets.QLabel(status_pane)
+        cryogen.setFont(monospace)
+        cryogen.setText("NONE")
+        status_layout.addWidget(cryogen, 4, 1, 1, -1, QtCore.Qt.AlignLeft)
+        self._cryogen = _InstantDisplay(cryogen, self)
 
         status_layout.addWidget(QtWidgets.QLabel("Sample:", status_pane), 5, 0, QtCore.Qt.AlignRight)
         sample = QtWidgets.QLabel(status_pane)
@@ -815,13 +815,13 @@ class Main(QtWidgets.QMainWindow):
         if self._pause_button.isChecked():
             _LOGGER.debug(f"Execution paused requested")
             self.pause_execution()
-            self._cyrogen.pause()
+            self._cryogen.pause()
             self._sample.pause()
             self._gc.pause()
         else:
             _LOGGER.debug(f"Execution resumed")
             self.resume_execution()
-            self._cyrogen.resume()
+            self._cryogen.resume()
             self._sample.resume()
             self._gc.resume()
 
@@ -864,7 +864,7 @@ class Main(QtWidgets.QMainWindow):
 
         self.current_task.setText("NONE")
         self._update_elapsed()
-        self._cyrogen.clear()
+        self._cryogen.clear()
         self._sample.clear()
         self._gc.clear()
         self._schedule_tab_changed()
@@ -872,7 +872,7 @@ class Main(QtWidgets.QMainWindow):
 
     def update_events(self, events: typing.Dict[str, 'gspc.schedule.Event']):
         """Update the events currently active in the schedule"""
-        self._cyrogen.set_event(events.get('cyrogen'))
+        self._cryogen.set_event(events.get('cryogen'))
         self._sample.set_events(events.get('sample_open'), events.get('sample_close'))
         self._gc.set_event(events.get('gc_trigger'))
 

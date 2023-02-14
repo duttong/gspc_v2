@@ -21,13 +21,13 @@ class Display(QtWidgets.QMainWindow):
         monospace.setFamily("Monospace")
         monospace.setStyleHint(QtGui.QFont.TypeWriter)
 
-        self.cyrogen = QtWidgets.QLabel("OFF", central_widget)
-        self.cyrogen.setFont(monospace)
-        central_layout.addRow("Cyrogen", self.cyrogen)
+        self.cryogen = QtWidgets.QLabel("OFF", central_widget)
+        self.cryogen.setFont(monospace)
+        central_layout.addRow("Cryogen", self.cryogen)
 
-        self.gc_cyrogen = QtWidgets.QLabel("OFF", central_widget)
-        self.gc_cyrogen.setFont(monospace)
-        central_layout.addRow("GC Cyrogen", self.gc_cyrogen)
+        self.gc_cryogen = QtWidgets.QLabel("OFF", central_widget)
+        self.gc_cryogen.setFont(monospace)
+        central_layout.addRow("GC Cryogen", self.gc_cryogen)
 
         self.cryro_heater = QtWidgets.QLabel("OFF", central_widget)
         self.cryro_heater.setFont(monospace)

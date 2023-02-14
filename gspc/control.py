@@ -485,12 +485,12 @@ class Simulator(Interface):
         return self.oven_temperature
 
     async def set_cryogen(self, enable: bool):
-        call_on_ui(lambda: self._display.cyrogen.setText("ON" if enable else "OFF"))
+        call_on_ui(lambda: self._display.cryogen.setText("ON" if enable else "OFF"))
         if enable and self.oven_temperature < 4.0:
             call_on_ui(lambda: self._display.oven_temperature.setValue(4.0))
 
     async def set_gc_cryogen(self, enable: bool):
-        call_on_ui(lambda: self._display.gc_cyrogen.setText("ON" if enable else "OFF"))
+        call_on_ui(lambda: self._display.gc_cryogen.setText("ON" if enable else "OFF"))
 
     async def set_vacuum(self, enable: bool):
         call_on_ui(lambda: self._display.vacuum.setText("ON" if enable else "OFF"))

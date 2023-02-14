@@ -6,7 +6,7 @@ from gspc.hw.interface import Interface
 from gspc.schedule import Task, Runnable, Execute, AbortPoint
 from gspc.output import CycleData, begin_cycle, complete_cycle, log_message
 
-from .cyrogen import *
+from .cryogen import *
 from .vacuum import *
 from .pressure import *
 from .temperature import *
