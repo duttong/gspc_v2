@@ -292,7 +292,7 @@ class Main(QtWidgets.QMainWindow):
         self._schedule_control = QtWidgets.QTabWidget(central_widget)
         central_layout.addWidget(self._schedule_control, 2, 0, 1, 1)
         self._task_list = QtWidgets.QListWidget(self._schedule_control)
-        self._task_list.currentItemChanged.connect(self._manual_task_selected)
+        self._task_list.selectionModel().selectionChanged.connect(self._manual_task_selected)
         self._schedule_control.addTab(self._task_list, "Manual")
 
         self._schedule_control.currentChanged.connect(self._schedule_tab_changed)
@@ -498,6 +498,9 @@ class Main(QtWidgets.QMainWindow):
     def current_task_list(self) -> typing.Optional[QtWidgets.QListWidget]:
         return self._schedule_control.currentWidget().findChild(QtWidgets.QListWidget, "FileTasks")
 
+    def modify_active_list(self, modified_index: int) -> bool:
+        return True
+
     def add_open_file(self, filename: str):
         tabname = Path(filename).stem
 
@@ -588,8 +591,14 @@ class Main(QtWidgets.QMainWindow):
                     content += "\n"
                     output_file.write(content)
 
+        def selected_index():
+            selected = task_list.selectedIndexes()
+            if not selected:
+                return -1
+            return selected[0].row()
+
         def selection_changed():
-            index = task_list.currentIndex().row()
+            index = selected_index()
             valid_task = 0 <= index < task_list.count()
             if not valid_task:
                 up_button.setEnabled(False)
@@ -608,7 +617,7 @@ class Main(QtWidgets.QMainWindow):
                 return
 
             up_button.setEnabled(index > 0 and is_mutable(task_list.item(index-1)))
-            down_button.setEnabled(index < (task_list.count()-1) and is_mutable(task_list.item(index+11)))
+            down_button.setEnabled(index < (task_list.count()-1) and is_mutable(task_list.item(index+1)))
             remove_button.setEnabled(True)
 
         def add_task():
@@ -620,39 +629,65 @@ class Main(QtWidgets.QMainWindow):
             item.setText(task.name)
             item.setData(QtCore.Qt.UserRole, task)
             task_list.addItem(item)
+
+            index = task_list.count()-1
+            if task_list == self.current_task_list and not self.modify_active_list(index):
+                task_list.takeItem(index)
+                return
+
             save_file()
             selection_changed()
 
         def remove_task():
-            index = task_list.currentIndex()
+            index = selected_index()
             if not index.isValid():
                 return
             index = index.row()
             if index < 0:
                 return
-            task_list.model().removeRow(index)
+
+            item = task_list.takeItem(index)
+            if task_list == self.current_task_list and not self.modify_active_list(index):
+                task_list.insertItem(index, item)
+                task_list.setCurrentRow(index)
+                return
+
             save_file()
             selection_changed()
 
         def task_up():
-            index = task_list.currentIndex().row()
+            index = selected_index()
             if index <= 0:
                 return
+
             item = task_list.takeItem(index)
             task_list.insertItem(index-1, item)
+            if task_list == self.current_task_list and not self.modify_active_list(index-1):
+                item = task_list.takeItem(index-1)
+                task_list.insertItem(index, item)
+                task_list.setCurrentRow(index)
+                return
+
             task_list.setCurrentRow(index-1)
             save_file()
 
         def task_down():
-            index = task_list.currentIndex().row()
+            index = selected_index()
             if index >= (task_list.count()-1):
                 return
+
             item = task_list.takeItem(index)
             task_list.insertItem(index + 1, item)
+            if task_list == self.current_task_list and not self.modify_active_list(index):
+                item = task_list.takeItem(index + 1)
+                task_list.insertItem(index, item)
+                task_list.setCurrentRow(index)
+                return
+
             task_list.setCurrentRow(index + 1)
             save_file()
 
-        task_list.currentItemChanged.connect(selection_changed)
+        task_list.selectionModel().selectionChanged.connect(selection_changed)
         add_button.clicked.connect(add_task)
         remove_button.clicked.connect(remove_task)
         up_button.clicked.connect(task_up)
@@ -704,7 +739,11 @@ class Main(QtWidgets.QMainWindow):
         _LOGGER.debug(f"Added manual task {name}")
         
     def _manual_task_selected(self):
-        index = self._task_list.currentIndex().row()
+        selected = self._task_list.selectedIndexes()
+        if not selected:
+            self._run_button.setEnabled(False)
+            return
+        index = selected[0].row()
         if index < 0:
             self._run_button.setEnabled(False)
             return
@@ -737,6 +776,7 @@ class Main(QtWidgets.QMainWindow):
         if task_list.count() <= 0:
             return
 
+        task_list.clearSelection()
         execute_list = list()
         for i in range(task_list.count()):
             task_item = task_list.item(i)
@@ -792,9 +832,6 @@ class Main(QtWidgets.QMainWindow):
         task_list = self.current_task_list
         if task_list:
             task_list.clearSelection()
-        add_button = self._schedule_control.currentWidget().findChild(QtWidgets.QPushButton, "AddFileTask")
-        if add_button:
-            add_button.setEnabled(False)
 
         self._pause_button.setChecked(False)
         self._pause_button.setEnabled(True)
@@ -802,6 +839,7 @@ class Main(QtWidgets.QMainWindow):
         self._run_button.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MediaStop))
         self._run_button.setChecked(True)
         self._close_file.setEnabled(False)
+        self._task_list.setEnabled(False)
 
         if begin_time is not None:
             self._schedule_begin_time = begin_time
@@ -814,9 +852,6 @@ class Main(QtWidgets.QMainWindow):
         task_list = self.current_task_list
         if task_list:
             task_list.clearSelection()
-        add_button = self._schedule_control.currentWidget().findChild(QtWidgets.QPushButton, "AddFileTask")
-        if add_button:
-            add_button.setEnabled(True)
 
         self._pause_button.setEnabled(False)
         self._pause_button.setChecked(False)
@@ -824,6 +859,7 @@ class Main(QtWidgets.QMainWindow):
         self._run_button.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay))
         self._run_button.setChecked(False)
         self._close_file.setEnabled(self._schedule_control.currentIndex() > 0)
+        self._task_list.setEnabled(True)
         self._schedule_begin_time = None
 
         self.current_task.setText("NONE")

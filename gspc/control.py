@@ -3,6 +3,7 @@ import asyncio
 import time
 import logging
 import enum
+import threading
 from gspc.ui.window import Main
 from gspc.schedule import Execute, Task, known_tasks
 from gspc.hw.interface import Interface
@@ -14,6 +15,9 @@ if typing.TYPE_CHECKING:
     import gspc.ui.simulator
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class Window(Main):
     """The main control window"""
 
@@ -23,10 +27,10 @@ class Window(Main):
         Main.__init__(self, enable_pfp=enable_pfp)
         self._loop = loop
         self._interface = interface
-        self._active_schedule = None
+        self._active_schedule: typing.Optional["_Schedule"] = None
 
         for name, task in known_tasks.items():
-            self.add_manual_task(name, lambda task=task: self._run_manual_task(task))
+            self.add_manual_task(name, lambda task=task, name=name: self._run_manual_task(task, name))
             self.loadable_tasks[name] = task
 
         def update_ssv(ssv_position: int) -> None:
@@ -138,23 +142,17 @@ class Window(Main):
 
         call_on_ui(message_gui)
 
-    def _run_manual_task(self, task: Task):
+    def _run_manual_task(self, task: Task, name: str):
         if self._active_schedule is not None:
             return
         self._active_schedule = _Schedule([task], self)
         self.set_running(time.time())
+        self.current_task.setText(name)
         self._loop.call_soon_threadsafe(lambda: background_task(self._execute_schedule()))
 
     def start_schedule(self, tasks: typing.Sequence[Task]):
         if self._active_schedule is not None:
             return
-
-        task_list = self.current_task_list
-        if task_list:
-            for i in range(task_list.count()):
-                task_item: QtWidgets.QListWidgetItem = task_list.item(i)
-                task_item.setFlags(task_item.flags() & ~QtCore.Qt.ItemIsSelectable)
-            task_list.clearSelection()
 
         self._active_schedule = _Schedule(tasks, self)
         self.set_running(time.time())
@@ -183,6 +181,50 @@ class Window(Main):
             await self._active_schedule.resume()
 
         self._loop.call_soon_threadsafe(lambda: background_task(loop_call()))
+
+    def modify_active_list(self, modified_index: int) -> bool:
+        if self._active_schedule is None:
+            return True
+        task_list = self.current_task_list
+        if task_list is None:
+            return True
+
+        _LOGGER.debug(f"Attempting reschedule after {modified_index}")
+
+        completed = threading.Event()
+        result: typing.Optional[_Schedule.RescheduleFailure] = None
+
+        append_tasks = list()
+        for i in range(modified_index, task_list.count()):
+            task_item: QtWidgets.QListWidgetItem = task_list.item(i)
+            append_tasks.append(task_item.data(QtCore.Qt.UserRole).task)
+
+        async def loop_call():
+            nonlocal result
+            if self._active_schedule is None:
+                completed.set()
+                return
+            try:
+                await self._active_schedule.reschedule(remove=modified_index, append=append_tasks)
+            except _Schedule.RescheduleFailure as e:
+                result = e
+            completed.set()
+
+        self._loop.call_soon_threadsafe(lambda: background_task(loop_call()))
+
+        while True:
+            if self._active_schedule is None:
+                break
+            if completed.wait(0.0):
+                break
+
+            QtGui.QGuiApplication.processEvents(QtCore.QEventLoop.AllEvents, 50)
+
+        if result is not None:
+            QtWidgets.QMessageBox.warning(self, "Reschedule Failed", f"Task reschedule failed: {result.message}")
+            return False
+
+        return True
 
     def _log_message(self, msg: str, record: logging.LogRecord):
         self.log_event(msg)

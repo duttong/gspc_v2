@@ -11,6 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 Event = namedtuple("Event", ["time", "occurred"])
+_Reschedule = namedtuple("_Reschedule", ["remove", "append"])
 
 
 class Runnable:
@@ -125,11 +126,20 @@ class Execute:
             self.task_completed: bool = False
             self.task_activated: bool = False
 
+    class RescheduleFailure(Exception):
+        """An exception raised when rescheduling fails"""
+        def __init__(self, message: str, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.message = message
+
     def __init__(self, task_sequence: typing.Sequence[Task]):
         self._tasks = task_sequence
         self._background_tasks: typing.Set[asyncio.Task] = set()
+        self._break_event = None
         self._aborted = False
         self._paused = None
+        self._reschedule_operation: typing.Optional[_Reschedule] = None
+        self._reschedule_result: typing.Optional[asyncio.Future] = None
         self.contexts: typing.List["Execute.Context"] = list()
         self.abort_message = None
         self.events: typing.Dict[str, Event] = dict()
@@ -188,6 +198,10 @@ class Execute:
 
     async def execute(self, interface: Interface):
         """Execute the scheduled tasks."""
+        if self._break_event is not None:
+            raise RuntimeError
+        self._break_event = asyncio.Event()
+
         run = list()
         origin = 0.0
         for i in range(len(self._tasks)):
@@ -205,14 +219,42 @@ class Execute:
         self.events.clear()
         completed_time = time.time()
         completed_origin = -math.inf
-        for i in range(len(run)):
-            to_run = run[i]
+        consumed_wait_time = 0.0
 
-            # Assign future events
+        async def wait_for_ready(running: Runnable) -> bool:
+            nonlocal consumed_wait_time
+
+            if not math.isfinite(running.origin):
+                need_break = self._break_event.is_set()
+                self._break_event.clear()
+                return not need_break
+
+            delay = running.origin - completed_origin
+            delay -= consumed_wait_time
+            assert math.isfinite(delay)
+            if delay <= 0.0:
+                need_break = self._break_event.is_set()
+                self._break_event.clear()
+                return not need_break
+
+            begin_wait = time.monotonic()
+            try:
+                await asyncio.wait_for(self._break_event.wait(), timeout=delay)
+            except (TimeoutError, asyncio.TimeoutError):
+                # Timeout means the delay has elapsed, so we're ready to execute
+                return True
+            consumed_wait_time += time.monotonic() - begin_wait
+
+            self._break_event.clear()
+            return False
+
+        def update_future_events():
+            nonlocal completed_origin
+
+            # Remove all future events so they can be regenerated
+            self.events = {e: d for e, d in self.events.items() if d.occurred}
             stop_events = set()
-            for j in range(i, len(run)):
-                next_run = run[j]
-
+            for next_run in run:
                 # If we don't yet have an origin, set it to this one
                 if not math.isfinite(completed_origin):
                     completed_origin = next_run.origin
@@ -232,45 +274,157 @@ class Execute:
 
                     self.events[event] = Event(expected_time, False)
 
-            # Call the before run so that displays are updated
+        def apply_reschedule(remove: typing.Optional[int], append: typing.Optional[typing.Sequence]):
+            nonlocal run
+
+            modified_contexts = list(self.contexts)
+            modified_tasks = list(self._tasks)
+
+            if remove is not None and remove < len(modified_contexts):
+                remove_contexts = set()
+                for ctx in modified_contexts[remove:]:
+                    if ctx.task_activated:
+                        raise self.RescheduleFailure("task already active")
+                    remove_contexts.add(ctx)
+
+                del modified_tasks[remove:]
+                del modified_contexts[remove:]
+
+                modified_run = [next_run for next_run in run if next_run.context not in remove_contexts]
+            else:
+                modified_run = list(run)
+
+            if append:
+                index = len(modified_contexts)
+                if index > 0:
+                    origin = modified_contexts[-1].origin + modified_tasks[-1].origin_advance
+                else:
+                    origin = 0.0
+                if not math.isfinite(completed_origin):
+                    first_possible_origin = consumed_wait_time
+                else:
+                    first_possible_origin = completed_origin + consumed_wait_time
+
+                for task in append:
+                    context = self.Context(interface, self, origin, index)
+                    add = task.schedule(context)
+
+                    for check in add:
+                        if check.origin < first_possible_origin:
+                            raise self.RescheduleFailure("task requires action in the past")
+
+                    modified_contexts.append(context)
+
+                    modified_run.extend(add)
+                    origin += task.origin_advance
+                    index += 1
+
+            self._tasks = modified_tasks
+            self.contexts = modified_contexts
+            run = modified_run
+            run.sort(key=lambda runnable: runnable.origin)
+
+        async def get_next_execute() -> typing.Optional[Runnable]:
+            nonlocal consumed_wait_time
+            nonlocal run
+            while run:
+                if self._paused is not None:
+                    # So that unscheduled events are updated
+                    await self.state_update()
+
+                    _LOGGER.debug("Schedule processing paused")
+                    await self._paused
+                    self._paused = None
+                    _LOGGER.debug("Schedule processing resumed")
+                    continue
+
+                if self._aborted:
+                    return None
+
+                if self._reschedule_operation is not None:
+                    op = self._reschedule_operation
+                    self._reschedule_operation = None
+                    try:
+                        apply_reschedule(op.remove, op.append)
+                        if self._reschedule_result:
+                            self._reschedule_result.set_result(True)
+                    except Exception as e:
+                        if self._reschedule_result:
+                            self._reschedule_result.set_exception(e)
+                        else:
+                            _LOGGER.warning("Reschedule failure", exc_info=True)
+                    continue
+
+                update_future_events()
+
+                # Call before the wait, so that event times are updated
+                await self.state_update()
+
+                to_run = run[0]
+
+                # Wait for ready or something to do
+                if not await wait_for_ready(to_run):
+                    continue
+
+                consumed_wait_time = 0.0
+                run = run[1:]
+                return to_run
+
+            return None
+
+        async def execute_pending(running: Runnable):
+            nonlocal completed_time
+            nonlocal completed_origin
+
+            # Mark as executing
+            running.context.task_activated = True
             await self.state_update()
-            if self._aborted:
-                await self._abort_processing()
-                return False
 
-            # Run it
-            use_real_time = await self._execute_run(to_run, completed_origin)
-            if self._aborted:
-                await self._abort_processing()
-                return False
+            use_real_time = await running.execute()
 
-            # Change the origin based on the completion time
             if use_real_time or not math.isfinite(completed_origin):
-                completed_origin = to_run.origin
                 completed_time = time.time()
             else:
-                completed_time += to_run.origin - completed_origin
-                completed_origin = to_run.origin
+                completed_time += running.origin - completed_origin
+
+            # This is accurate even for real time actions, since we never couple it to absolute
+            # time.  So even ones that delay will still mean the subsequent ones wait as long
+            # as the delay between them and the next should be.
+            completed_origin = running.origin
 
             # Completed now, so record events that were processed
-            for event in to_run.clear_events:
+            for event in running.clear_events:
                 self.events.pop(event, None)
-            for event in to_run.set_events:
+            for event in running.set_events:
                 self.events[event] = Event(completed_time, True)
 
-            # Purge any completed background tasks
-            if len(self._background_tasks) > 0:
-                completed_tasks, _ = await asyncio.wait(self._background_tasks,
-                                                        timeout=0,
-                                                        return_when=asyncio.FIRST_COMPLETED)
-                for task in completed_tasks:
-                    try:
-                        await task
-                    except:
-                        pass
-                    self._background_tasks.discard(task)
+        async def reap_background_tasks():
+            if len(self._background_tasks) == 0:
+                return
 
-        await self._complete_processing()
+            completed_tasks, _ = await asyncio.wait(self._background_tasks,
+                                                    timeout=0,
+                                                    return_when=asyncio.FIRST_COMPLETED)
+            for task in completed_tasks:
+                try:
+                    await task
+                except:
+                    _LOGGER.warning("Error in background task", exc_info=True)
+                self._background_tasks.discard(task)
+
+        while True:
+            to_run = await get_next_execute()
+            if to_run is None:
+                break
+
+            await execute_pending(to_run)
+            await reap_background_tasks()
+
+        if self._aborted:
+            await self._abort_processing()
+        else:
+            await self._complete_processing()
+        self._break_event = None
         return True
 
     async def abort(self, message: typing.Optional[str] = None):
@@ -278,6 +432,8 @@ class Execute:
         self._aborted = True
         if message is not None:
             self.abort_message = message
+        if self._break_event:
+            self._break_event.set()
         _LOGGER.debug("Schedule processing aborting")
 
     async def pause(self):
@@ -286,6 +442,8 @@ class Execute:
             return
         _LOGGER.debug("Schedule processing pause requested")
         self._paused = asyncio.get_running_loop().create_future()
+        if self._break_event:
+            self._break_event.set()
 
     async def resume(self):
         """Resume paused schedule execution"""
@@ -293,6 +451,20 @@ class Execute:
             return
         _LOGGER.debug("Schedule processing resume requested")
         self._paused.set_result(False)
+
+    async def reschedule(self, remove: typing.Optional[int] = None,
+                         append: typing.Optional[typing.Sequence[Task]] = None):
+        """Attempt to remove the specified task index and all tasks after it and append the new ones"""
+        if self._reschedule_result is not None:
+            raise self.RescheduleFailure("reschedule currently in progress")
+        self._reschedule_result = asyncio.get_running_loop().create_future()
+        assert self._reschedule_operation is None
+        self._reschedule_operation = _Reschedule(remove, append)
+        if self._break_event:
+            self._break_event.set()
+        await self._reschedule_result
+        self._reschedule_result.result()
+        self._reschedule_result = None
 
     async def start_background(self, execute: typing.Coroutine) -> asyncio.Task:
         """Start a task in the background, which will be waited for and aborted with the schedule"""
