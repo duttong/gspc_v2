@@ -414,6 +414,10 @@ class Main(QtWidgets.QMainWindow):
             self.select_pfp = QtWidgets.QSpinBox(control_pane)
             self.select_pfp.setRange(1, 12)
             control_layout.addWidget(self._line_layout(control_pane, self.pfp_open, self.pfp_close, self.select_pfp))
+        else:
+            self.pfp_open = None
+            self.pfp_close = None
+            self.select_pfp = None
 
         control_layout.addStretch(1)
 
