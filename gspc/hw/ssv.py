@@ -51,11 +51,12 @@ class SSV:
             return port
         raise RuntimeError("SSV not found")
 
-    def _parse_cp(self, str):
-        m = re.search(r'= (\d+)', str)
+    def _parse_cp(self, valcostr: str) -> int:
+        """ parse the string returned from a Valco SSV valve """
+        m = re.search(r'= (\d+)', valcostr)
         if m is None:
-            return 0
-        return m.group(1)
+            return -1
+        return int(m.group(1))
 
     async def read(self) -> int:
         """Read the current position"""
@@ -64,16 +65,17 @@ class SSV:
             self._port.write(b"CP\r")
             v = self._port.readline()
             v = self._parse_cp(v.decode())
-            #return int(v) - 1
+            # handle port 16 differently. If 16 return 0
+            v = 0 if v == 16 else v
             return int(v)
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
 
     async def set(self, pos: int) -> None:
-        """Set the current position"""
+        """Set the current position. When pos is 0 send SSV to position 16 """
 
         async def execute_write() -> None:
-            #self._port.write(b"GO%d\r" % (pos + 1))
+            pos = 16 if pos == 0 else pos
             self._port.write(b"GO%d\r" % (pos))
             self._port.flushOutput()
             await asyncio.sleep(0.1)
