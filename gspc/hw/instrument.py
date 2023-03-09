@@ -55,8 +55,8 @@ class Instrument(Interface):
     # Source index -> digital channel
     # The evacuation is done at PFP position - 1, so these are 1 and 12
     EVACUATION_VALVES = {
-        0: "EIO8",
-        11: "EIO12",
+        0: DOT_EVAC_PORT_1,
+        11: DOT_EVAC_PORT_12,
     }
 
     def __init__(self, loop: asyncio.AbstractEventLoop):
@@ -68,7 +68,7 @@ class Instrument(Interface):
         self._ssv = SSV("COM1")
 
         self._pfp: typing.Dict[typing.Optional[int], PFP] = dict()
-        pfp1: typing.Optional[PFP] = PFP.detect_optional("COM3")
+        pfp1: typing.Optional[PFP] = PFP.detect_optional("COM11")
         if pfp1:
             self._pfp[1] = pfp1
             # Evacuation alias
