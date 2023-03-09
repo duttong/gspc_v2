@@ -89,6 +89,7 @@ class Window(Main):
 
         if self.selected_pfp_in is not None:
             self._hook_interface('set_pfp_valve', self._interface_set_pfp_valve)
+
         if self.pfp_open is not None:
             self.pfp_open.clicked.connect(self._ui_open_pfp)
         if self.pfp_close is not None:
