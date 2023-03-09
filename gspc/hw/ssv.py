@@ -75,8 +75,9 @@ class SSV:
         """Set the current position. When pos is 0 send SSV to position 16 """
 
         async def execute_write() -> None:
+            nonlocal pos
             pos = 16 if pos == 0 else pos
-            self._port.write(b"GO%d\r" % (pos))
+            self._port.write(b"GO%d\r" % pos)
             self._port.flushOutput()
             await asyncio.sleep(0.1)
             self._port.flushInput()
