@@ -314,7 +314,7 @@ class Main(QtWidgets.QMainWindow):
             self.pfp_pressure = QtWidgets.QLabel(inputs_pane)
             self.pfp_pressure.setText("0000.00")
             self.pfp_pressure.setFont(monospace)
-            inputs_layout.addRow("PFP Pressure (torr):", self.pfp_pressure)
+            inputs_layout.addRow("PFP Pressure (psia):", self.pfp_pressure)
         else:
             self.pfp_pressure = None
 
@@ -405,7 +405,7 @@ class Main(QtWidgets.QMainWindow):
         self.output_flow_feedback.setFont(monospace)
         control_layout.addWidget(self._line_layout(control_pane, self.apply_flow, self.output_flow,
                                                    self.output_flow_feedback))
-        
+
         if enable_pfp:
             self.pfp_open = QtWidgets.QPushButton(control_pane)
             self.pfp_open.setText("PFP Open")
