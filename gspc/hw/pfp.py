@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import typing
-import time
+import re
 import serial
 import serial.tools.list_ports
 from threading import Thread
@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class PFP:
-    TIMEOUT = 10
+    TIMEOUT = 0.5
 
     def __init__(self, port: typing.Optional[typing.Union[str, serial.Serial]] = None):
         if not isinstance(port, serial.Serial):
@@ -28,9 +28,9 @@ class PFP:
         self._thread.start()
 
     @classmethod
-    def detect_optional(cls, port: str) -> typing.Optional["PFP"]:
+    def detect_optional(cls, com: str) -> typing.Optional["PFP"]:
         try:
-            port = serial.Serial(port=port, baudrate=9600, timeout=1.0, inter_byte_timeout=0, write_timeout=0)
+            port = serial.Serial(port=com, baudrate=9600, timeout=0.5, inter_byte_timeout=0, write_timeout=0)
         except (ValueError, serial.SerialException, IOError):
             return None
         try:
@@ -44,6 +44,7 @@ class PFP:
                 pass
             return None
         port.timeout = cls.TIMEOUT
+        print(f'found pfp on {com}')
         return cls(port)
 
     def _run(self):
@@ -55,22 +56,25 @@ class PFP:
         try:
             port.reset_input_buffer()
             port.write(b' \r')
-            resp = port.readline()
-            if b"UNLOAD>" in resp:
+            resp = port.readlines()
+            resp = ''.join(map(str, resp))
+            if "UNLOAD>" in resp:
                 return True
             for i in range(5):
-                if b"AS>" in resp:
+                if "AS>" in resp:
                     break
                 port.write(b'Q\r')
                 port.reset_input_buffer()
                 port.write(b' \r')
-                resp = port.readline()
+                resp = port.readlines()
+                resp = ''.join(map(str, resp))
             else:
                 # AS> prompt not reached
                 return False
             port.write(b'U\r')
-            resp = port.readline()
-            if b"UNLOAD>" in resp:
+            resp = port.readlines()
+            resp = ''.join(map(str, resp))
+            if "UNLOAD>" in resp:
                 return True
         except (ValueError, serial.SerialException):
             pass
@@ -92,24 +96,33 @@ class PFP:
         raise RuntimeError("PFP not found")
 
     async def read_pressure(self) -> float:
-        """Read the current pressure"""
+        """Read the current pressure
+           updated with readlines method and regex decoding. GSD """
 
         async def execute_read() -> float:
             self._prompt_unload()
             self._port.write(b"P\r")
-            response = self._port.readline()
-            return float(response[4:4+9])
+            response = self._port.readlines()
+            response = ''.join([s.decode("utf-8") for s in response])
+            m = re.search(r' (\d+.\d+)', response)
+            if m is None:
+                return -1
+            return float(m.group(1))
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
 
     async def open_valve(self, pos: int) -> str:
-        """Open a sample valve"""
+        """Open a sample valve
+           switched to readlines method
+           returns valve and status """
 
         async def execute_write() -> str:
             self._prompt_unload()
             self._port.write(b"O\r%d\r" % pos)
-            response = self._port.readline()
-            return response[26:].decode("utf-8").strip()
+            await asyncio.sleep(3)
+            response = self._port.readlines()
+            response = ''.join([s.decode("utf-8") for s in response])
+            return response[24:-8].strip()
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_write(), self._loop))
 
@@ -119,7 +132,9 @@ class PFP:
         async def execute_write() -> str:
             self._prompt_unload()
             self._port.write(b"C\r%d\r" % pos)
-            response = self._port.readline()
-            return response[26:].decode("utf-8").strip()
+            await asyncio.sleep(3)
+            response = self._port.readlines()
+            response = ''.join([s.decode("utf-8") for s in response])
+            return response[24:-8].strip()
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_write(), self._loop))
