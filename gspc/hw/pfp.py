@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class PFP:
-    TIMEOUT = 0.5
+    TIMEOUT = 2
 
     def __init__(self, port: typing.Optional[typing.Union[str, serial.Serial]] = None):
         if not isinstance(port, serial.Serial):
@@ -30,7 +30,7 @@ class PFP:
     @classmethod
     def detect_optional(cls, com: str) -> typing.Optional["PFP"]:
         try:
-            port = serial.Serial(port=com, baudrate=9600, timeout=0.5, inter_byte_timeout=0, write_timeout=0)
+            port = serial.Serial(port=com, baudrate=9600, timeout=1.0, inter_byte_timeout=0, write_timeout=0)
         except (ValueError, serial.SerialException, IOError):
             return None
         try:
@@ -101,6 +101,8 @@ class PFP:
            updated with readlines method and regex decoding. GSD """
 
         async def execute_read() -> float:
+            return 0.999
+            """
             self._prompt_unload()
             self._port.write(b"P\r")
             response = self._port.readlines()
@@ -109,6 +111,7 @@ class PFP:
             if m is None:
                 return -1
             return float(m.group(1))
+            """
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
 
