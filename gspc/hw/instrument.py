@@ -228,6 +228,7 @@ class Instrument(Interface):
             return
         else:
             await self._lj.write_digital(channel, enable)
+            _LOGGER.info(f"High Pressure Valve {self._selected_ssv} {enable}")
 
     async def set_evacuation_valve(self, enable: bool):
         if self._selected_ssv is None:
@@ -237,6 +238,7 @@ class Instrument(Interface):
             return
         else:
             await self._lj.write_digital(channel, enable)
+            _LOGGER.info(f"Evacuation Valve {self._selected_ssv} {enable}")
 
     async def ready_gcms(self):
         await self._lj.write_digital(self.DOT_GCMS_START, True)

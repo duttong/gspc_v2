@@ -82,7 +82,8 @@ class PFP:
 
     def _prompt_unload(self):
         if not self._get_unload_prompt(self._port):
-            raise RuntimeError("Failed to get unload prompt")
+            _LOGGER.warning("Failed to get unload prompt from pfp")
+            #raise RuntimeError("Failed to get unload prompt")
 
     def _autodetect(self) -> serial.Serial:
         for port_info in serial.tools.list_ports.comports():
@@ -120,6 +121,7 @@ class PFP:
             self._prompt_unload()
             self._port.write(b"O\r%d\r" % pos)
             await asyncio.sleep(3)
+            _LOGGER.info(f"Attempting to Open PFP valve {pos}")
             response = self._port.readlines()
             response = ''.join([s.decode("utf-8") for s in response])
             return response[24:-8].strip()
@@ -133,6 +135,7 @@ class PFP:
             self._prompt_unload()
             self._port.write(b"C\r%d\r" % pos)
             await asyncio.sleep(3)
+            _LOGGER.info(f"Attempting to Close PFP valve {pos}")
             response = self._port.readlines()
             response = ''.join([s.decode("utf-8") for s in response])
             return response[24:-8].strip()
