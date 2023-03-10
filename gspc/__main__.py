@@ -23,6 +23,7 @@ def event_thread():
 def main():
     loop = event_thread()
     app = QtWidgets.QApplication(sys.argv)
+    app.setStyleSheet("QLabel{font-size: 12pt;}")
 
     root_logger = logging.getLogger()
     if "--debug" in app.arguments():
