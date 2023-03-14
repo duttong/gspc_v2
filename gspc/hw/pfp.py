@@ -101,8 +101,6 @@ class PFP:
            updated with readlines method and regex decoding. GSD """
 
         async def execute_read() -> float:
-            return 0.999
-            """
             self._prompt_unload()
             self._port.write(b"P\r")
             response = self._port.readlines()
@@ -111,7 +109,6 @@ class PFP:
             if m is None:
                 return -1
             return float(m.group(1))
-            """
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
 
