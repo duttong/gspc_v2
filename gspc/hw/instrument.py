@@ -86,6 +86,7 @@ class Instrument(Interface):
 
         self._selected_ssv = None
         self._flow_control_voltage = None
+        self._pfp_pressure = None
 
     @property
     def has_pfp(self) -> bool:
@@ -258,12 +259,15 @@ class Instrument(Interface):
             return await pfp.close_valve(pfp_valve)
 
     async def get_pfp_pressure(self, ssv_index: typing.Optional[int] = None) -> float:
+        """ method to read the pfp flask pressure.
+            GSD modified the method to save the pfp flask pressure to self._pfp_pressure """
         if ssv_index is None:
             ssv_index = self._selected_ssv
         pfp = self._pfp.get(ssv_index)
         if pfp is None:
             return None
-        return await pfp.read_pressure()
+        self._pfp_pressure = await pfp.read_pressure()
+        return self._pfp_pressure
 
     async def initialization(self):
         """ This method is called when gspc starts. Sets al of the digio lines

@@ -57,9 +57,11 @@ class Window(Main):
             self._interface.get_oven_temperature_signal,
             lambda value: self.oven_temperature.setText(f"{value:8.3f}")
         )))
+        # calling get_pfp_pressure too often interfers with other pfp comms. GSD
         if self.pfp_pressure is not None:
             self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
-                self._interface.get_pfp_pressure,
+                self._interface._pfp_pressure,
+                #self._interface.get_pfp_pressure,
                 lambda value: self.pfp_pressure.setText(f"{value:8.3f}")
             )))
 

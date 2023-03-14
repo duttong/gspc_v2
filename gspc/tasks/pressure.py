@@ -26,7 +26,7 @@ class MeasurePressure(Runnable):
             await asyncio.sleep(1)
         pressure_mean = statistics.mean(pressure_readings)
         pressure_stddev = statistics.stdev(pressure_readings)
-        _LOGGER.debug(f"Measured pressure {pressure_mean:.1f} with stddev {pressure_stddev:.2f}")
+        _LOGGER.info(f"Measured pressure {pressure_mean:.1f} with stddev {pressure_stddev:.2f}")
         self._record(pressure_mean, pressure_stddev, pressure_readings)
 
     async def execute(self):
@@ -43,9 +43,8 @@ class MeasurePFPPressure(Runnable):
 
     async def execute(self):
         pressure = await self.context.interface.get_pfp_pressure(self._ssv)
-        _LOGGER.debug(f"Measured PFP {self._ssv} pressure {pressure:.1f}")
+        _LOGGER.info(f"Measured PFP {self._ssv} pressure {pressure:.1f}")
         self._record(pressure)
-        _LOGGER.info("Collected PFP pressure data")
 
 
 class CheckPFPEvacuated(Runnable):
