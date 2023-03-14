@@ -284,7 +284,7 @@ class Main(QtWidgets.QMainWindow):
         status_layout.addWidget(QtWidgets.QWidget(status_pane), 7, 0, 1, -1)
 
         self._log_display = QtWidgets.QPlainTextEdit(central_widget)
-        central_layout.addWidget(self._log_display, 1, 1, 1, -1)
+        central_layout.addWidget(self._log_display, 3, 0, 1, -1)
         self._log_display.setFont(monospace)
         self._log_display.setReadOnly(True)
         self._log_display.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
