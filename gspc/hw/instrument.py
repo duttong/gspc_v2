@@ -86,7 +86,7 @@ class Instrument(Interface):
 
         self._selected_ssv = None
         self._flow_control_voltage = None
-        self._pfp_pressure = None
+        self._pfp_pressure = 0.0
 
     @property
     def has_pfp(self) -> bool:
@@ -267,6 +267,9 @@ class Instrument(Interface):
         if pfp is None:
             return None
         self._pfp_pressure = await pfp.read_pressure()
+        return self._pfp_pressure
+
+    async def return_pfp_pressure(self):
         return self._pfp_pressure
 
     async def initialization(self):

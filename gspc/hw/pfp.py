@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class PFP:
-    TIMEOUT = 2
+    TIMEOUT = 1
 
     def __init__(self, port: typing.Optional[typing.Union[str, serial.Serial]] = None):
         if not isinstance(port, serial.Serial):
@@ -120,7 +120,7 @@ class PFP:
         async def execute_write() -> str:
             self._prompt_unload()
             self._port.write(b"O\r%d\r" % pos)
-            await asyncio.sleep(3)
+            await asyncio.sleep(10)
             _LOGGER.info(f"Attempting to Open PFP valve {pos}")
             response = self._port.readlines()
             response = ''.join([s.decode("utf-8") for s in response])
@@ -134,7 +134,7 @@ class PFP:
         async def execute_write() -> str:
             self._prompt_unload()
             self._port.write(b"C\r%d\r" % pos)
-            await asyncio.sleep(3)
+            await asyncio.sleep(10)
             _LOGGER.info(f"Attempting to Close PFP valve {pos}")
             response = self._port.readlines()
             response = ''.join([s.decode("utf-8") for s in response])
