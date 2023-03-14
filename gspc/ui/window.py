@@ -644,7 +644,7 @@ class Main(QtWidgets.QMainWindow):
 
         def remove_task():
             index = selected_index()
-            if index <= 0:
+            if index < 0:
                 return
 
             item = task_list.takeItem(index)
