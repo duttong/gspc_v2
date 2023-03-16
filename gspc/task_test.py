@@ -34,4 +34,5 @@ loop.call_soon_threadsafe(lambda: background_task(interface.initialization()))
 
 
 exe = Execute([TestTask()])
-loop.run_until_complete(exe.execute(interface))
+exe.execute(interface)
+#loop.run_until_complete(exe.execute(interface))
