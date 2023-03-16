@@ -69,7 +69,9 @@ class Flask(Sample):
             ]
         else:
             result += [
+                HighPressureOff(context, context.origin),
                 SetSSV(context, context.origin, self._selection),
+                OverflowOn(context, context.origin),
 
                 FeedbackFlow(context, context.origin + 6, INITIAL_FLOW),
             ]

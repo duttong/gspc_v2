@@ -181,6 +181,7 @@ class PFPFlask(Sample):
             ]
         else:
             result += [
+                HighPressureOff(context, context.origin),
                 # Some failsafes to make sure the initial state on the first sample is sane
                 SetSSV(context, context.origin, self._ssv),
                 EvacuateOff(context, context.origin),
