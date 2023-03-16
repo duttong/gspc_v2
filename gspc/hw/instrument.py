@@ -169,7 +169,6 @@ class Instrument(Interface):
             if abs(delta) < deadband:
                 return
 
-            _LOGGER.info(f"increment {self._to_adjustment_increment(delta)}")
             if delta < 0:
                 self._flow_control_voltage += self._to_adjustment_increment(delta)
             else:
