@@ -84,6 +84,10 @@ class PFPFlask(Sample):
         result = [
             CycleBegin(context, context.origin, data),
 
+            # added GSD
+            MeasurePFPPressure(context, context.origin + 3, self._ssv, None),
+            MeasurePFPPressure(context, context.origin + 30, self._ssv, None),
+
             EnableCryogen(context, context.origin + 1),
             DisableCryogen(context, sample_post_origin - 5),
 
@@ -138,7 +142,11 @@ class PFPFlask(Sample):
             MeasurePressure(context, sample_post_origin + 4, 16, data.record_pressure_end),
             CheckSampleTemperature(context, sample_post_origin + 69),
 
+            # extra pressure measurements added GSD
+            MeasurePFPPressure(context, sample_post_origin + 5, self._ssv, None),
+            MeasurePFPPressure(context, sample_post_origin + 10, self._ssv, None),
             MeasurePFPPressure(context, sample_post_origin + 15, self._ssv, data.record_pfp_pressure3),
+            MeasurePFPPressure(context, sample_post_origin + 20, self._ssv, None),
 
             abort_flow_invalid,
             abort_after_cycle,
@@ -156,6 +164,9 @@ class PFPFlask(Sample):
         if context.origin > 0.0:
             result += [
                 SetSSV(context, context.origin - 30, self._ssv),
+                
+                # added GSD
+                MeasurePFPPressure(context, context.origin - 32, self._ssv, None),
 
                 EvacuateOff(context, context.origin - 240),
                 ZeroFlow(context, context.origin - 230),

@@ -43,8 +43,9 @@ class MeasurePFPPressure(Runnable):
 
     async def execute(self):
         pressure = await self.context.interface.get_pfp_pressure(self._ssv)
-        _LOGGER.info(f"Measured PFP {self._ssv} pressure {pressure:.1f}")
-        self._record(pressure)
+        _LOGGER.info(f"Measured PFP ssv={self._ssv} pressure {pressure:.1f}")
+        if self._record:
+            self._record(pressure)
 
 
 class CheckPFPEvacuated(Runnable):
