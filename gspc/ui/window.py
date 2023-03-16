@@ -398,7 +398,7 @@ class Main(QtWidgets.QMainWindow):
         self.apply_flow = QtWidgets.QPushButton(control_pane)
         self.apply_flow.setText("Change Flow")
         self.output_flow = QtWidgets.QDoubleSpinBox(control_pane)
-        self.output_flow.setRange(0.0, 188.0)
+        self.output_flow.setRange(0.0, 50.0)
         self.output_flow.setSingleStep(0.1)
         self.output_flow_feedback = QtWidgets.QLabel(inputs_pane)
         self.output_flow_feedback.setText("0.000")
