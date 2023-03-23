@@ -188,7 +188,6 @@ class Instrument(Interface):
         await self._lj.write_analog(self.AOT_FLOW, self._flow_control_voltage)
 
     async def get_ssv_cp(self) -> int:
-        #return 2
         return await self._ssv.read()
 
     async def set_ssv(self, index: int, manual: bool = False):
@@ -211,6 +210,7 @@ class Instrument(Interface):
                 _LOGGER.warning(f"Failed to change SSV to {index}")
 
         self._selected_ssv = index
+        _LOGGER.info(f"SSV position is {index}")
 
         # Open the valve if in manual mode
         if manual:
