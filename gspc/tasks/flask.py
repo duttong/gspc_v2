@@ -57,10 +57,13 @@ class Flask(Sample):
         if context.origin > 0.0:
             result += [
                 SetSSV(context, context.origin - 814, self._selection),
-                FeedbackFlow(context, context.origin - 813, INITIAL_FLOW),
+                # FeedbackFlow(context, context.origin - 813, INITIAL_FLOW),
+                StaticFlow(context, context.origin, INITIAL_FLOW),
 
                 SetSSV(context, context.origin - 435, self._selection),
-                FeedbackFlow(context, context.origin - 425, SAMPLE_FLOW),
+                OverflowOn(context, context.origin - 420),
+                FeedbackFlow(context, context.origin - 420, INITIAL_FLOW),
+                OverflowOff(context, context.origin - 350),
 
                 OverflowOn(context, context.origin - 180),
                 OverflowOff(context, context.origin - 130),
