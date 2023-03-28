@@ -3,6 +3,7 @@
 import logging
 import time
 import typing
+from gspc.const import CYCLE_SECONDS
 from PyQt5 import QtCore, QtGui, QtWidgets
 from pathlib import Path
 from collections import namedtuple
@@ -43,6 +44,9 @@ class _InstantDisplay(QtCore.QObject):
 
         self._update_label()
 
+    def _display_counter(self, seconds_remaining):
+        return _to_duration(seconds_remaining)
+
     def _update_label(self):
         if self._event is None:
             self._updater.stop()
@@ -53,7 +57,7 @@ class _InstantDisplay(QtCore.QObject):
             self._updater.stop()
             self._label.setText("<font color='green'>" + _to_time_display(self._event.time) + "</font>")
             return
-        self._label.setText(_to_duration(seconds_remaining))
+        self._label.setText(self._display_counter(seconds_remaining))
         seconds_remaining = seconds_remaining - int(seconds_remaining)
         self._updater.start(max(100, int(seconds_remaining * 1000)) + 10)
 
@@ -72,6 +76,14 @@ class _InstantDisplay(QtCore.QObject):
         self._updater.stop()
         self._event = None
         self._label.setText("NONE")
+
+
+class _CycleSeconds(_InstantDisplay):
+    def _display_counter(self, seconds_remaining):
+        seconds_elapsed = int(CYCLE_SECONDS - seconds_remaining)
+        if seconds_elapsed < 1:
+            seconds_elapsed = 1
+        return f"{seconds_elapsed:8d} S"
 
 
 class _OnOffDisplay(QtCore.QObject):
@@ -204,7 +216,8 @@ class Main(QtWidgets.QMainWindow):
         status_layout.setRowStretch(4, 0)
         status_layout.setRowStretch(5, 0)
         status_layout.setRowStretch(6, 0)
-        status_layout.setRowStretch(7, 1)
+        status_layout.setRowStretch(7, 0)
+        status_layout.setRowStretch(8, 1)
         status_layout.setColumnStretch(0, 0)
         status_layout.setColumnStretch(1, 1)
         status_layout.setColumnStretch(2, 0)
@@ -281,7 +294,14 @@ class Main(QtWidgets.QMainWindow):
         status_layout.addWidget(gc, 6, 1, 1, -1, QtCore.Qt.AlignLeft)
         self._gc = _InstantDisplay(gc, self)
 
-        status_layout.addWidget(QtWidgets.QWidget(status_pane), 7, 0, 1, -1)
+        status_layout.addWidget(QtWidgets.QLabel("Cycle:", status_pane), 7, 0, QtCore.Qt.AlignRight)
+        cycle = QtWidgets.QLabel(status_pane)
+        cycle.setFont(monospace)
+        cycle.setText("NONE")
+        status_layout.addWidget(cycle, 7, 1, 1, -1, QtCore.Qt.AlignLeft)
+        self._cycle = _CycleSeconds(cycle, self)
+
+        status_layout.addWidget(QtWidgets.QWidget(status_pane), 8, 0, 1, -1)
 
         self._log_display = QtWidgets.QPlainTextEdit(central_widget)
         central_layout.addWidget(self._log_display, 3, 0, 1, -1)
@@ -819,12 +839,14 @@ class Main(QtWidgets.QMainWindow):
             self._cryogen.pause()
             self._sample.pause()
             self._gc.pause()
+            self._cycle.pause()
         else:
             _LOGGER.debug(f"Execution resumed")
             self.resume_execution()
             self._cryogen.resume()
             self._sample.resume()
             self._gc.resume()
+            self._cycle.resume()
 
     def set_running(self, begin_time: typing.Optional[float] = None):
         """Change the display mode for when a schedule is running"""
@@ -868,6 +890,7 @@ class Main(QtWidgets.QMainWindow):
         self._cryogen.clear()
         self._sample.clear()
         self._gc.clear()
+        self._cycle.clear()
         self._schedule_tab_changed()
         self._reset_schedule_contents()
 
@@ -876,6 +899,7 @@ class Main(QtWidgets.QMainWindow):
         self._cryogen.set_event(events.get('cryogen'))
         self._sample.set_events(events.get('sample_open'), events.get('sample_close'))
         self._gc.set_event(events.get('gc_trigger'))
+        self._cycle.set_event(events.get('cycle_end'))
 
     def get_open_files(self) -> typing.Sequence[str]:
         """Get the list of currently open files."""

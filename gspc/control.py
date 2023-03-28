@@ -60,7 +60,7 @@ class Window(Main):
         # calling get_pfp_pressure too often interfears with other pfp comms. GSD
         if self.pfp_pressure is not None:
             self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
-                self._interface.return_pfp_pressure,
+                self._interface.get_display_pfp_pressure,
                 lambda value: self.pfp_pressure.setText(f"{value:8.3f}")
             )))
 
@@ -363,6 +363,7 @@ class _Schedule(Execute):
         self._window = window
 
     async def state_update(self):
+        is_paused = await self.is_paused()
         events = dict()
         for key, event in self.events.items():
             events[key] = event
@@ -384,7 +385,8 @@ class _Schedule(Execute):
                 task_state[context.task_index] = State.PREPARING
 
         def update():
-            self._window.update_events(events)
+            if not is_paused:
+                self._window.update_events(events)
 
             task_list = self._window._schedule_control.currentWidget().findChild(QtWidgets.QListWidget, "FileTasks")
             if task_list:
@@ -572,6 +574,9 @@ class Simulator(Interface):
         return "OK"
 
     async def get_pfp_pressure(self, ssv_index: typing.Optional[int] = None) -> float:
+        return self.pfp_pressure
+
+    async def get_display_pfp_pressure(self) -> float:
         return self.pfp_pressure
 
     async def get_pfp_reply(self, ssv_index: typing.Optional[int] = None) -> str:

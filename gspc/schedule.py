@@ -452,6 +452,10 @@ class Execute:
         _LOGGER.debug("Schedule processing resume requested")
         self._paused.set_result(False)
 
+    async def is_paused(self) -> bool:
+        """Test if the schedule has currently been paused"""
+        return self._paused is not None
+
     async def reschedule(self, remove: typing.Optional[int] = None,
                          append: typing.Optional[typing.Sequence[Task]] = None):
         """Attempt to remove the specified task index and all tasks after it and append the new ones"""

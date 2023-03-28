@@ -22,6 +22,11 @@ class Interface(ABC):
         pass
 
     @abstractmethod
+    async def get_display_pfp_pressure(self) -> float:
+        """Read the current PFP pressure for display"""
+        pass
+
+    @abstractmethod
     async def get_oven_temperature_signal(self) -> float:
         """Read the current oven temperature signal"""
         pass

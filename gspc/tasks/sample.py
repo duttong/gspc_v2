@@ -183,6 +183,7 @@ class CycleBegin(Runnable):
         self.clear_events.add("sample_open")
         self.clear_events.add("sample_close")
         self.clear_events.add("gc_trigger")
+        self.clear_events.add("cycle_end")
         self.data = data
 
     async def execute(self):
@@ -196,6 +197,7 @@ class CycleEnd(Runnable):
         self.clear_events.add("sample_open")
         self.clear_events.add("sample_close")
         self.clear_events.add("gc_trigger")
+        self.set_events.add("cycle_end")
 
     async def execute(self):
         self.context.task_completed = True

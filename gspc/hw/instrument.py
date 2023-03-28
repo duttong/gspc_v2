@@ -270,7 +270,7 @@ class Instrument(Interface):
         self._pfp_pressure = await pfp.read_pressure()
         return self._pfp_pressure
 
-    async def return_pfp_pressure(self):
+    async def get_display_pfp_pressure(self) -> float:
         return self._pfp_pressure
 
     async def initialization(self):
