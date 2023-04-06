@@ -209,6 +209,7 @@ class Sample(Task):
         Task.__init__(self, CYCLE_SECONDS)
 
     def schedule(self, context: Execute.Context, data: typing.Optional[Data] = None) -> typing.List[Runnable]:
+        # sample_post_origin is the start time of the injection
         sample_post_origin = context.origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
         if data is None:

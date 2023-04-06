@@ -36,8 +36,9 @@ class Flask(Sample):
 
         async def low_flow_detected():
             await maintain_sample_flow.stop()
-            await context.interface.set_vacuum(False)
+            await context.interface.set_overflow(False)
             data.low_flow = "Y"
+            data.low_flow_count = 2
 
         result = Sample.schedule(self, context, data) + [
             StaticFlow(context, context.origin + 69, SAMPLE_FLOW),

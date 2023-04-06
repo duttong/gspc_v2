@@ -165,7 +165,7 @@ class Instrument(Interface):
         for i in range(15):
             measured_flow = await self.get_flow_signal()
             delta = measured_flow - flow
-            _LOGGER.info(f"Adjusting flow {measured_flow:.2f} to target {flow:.2f}, delta {delta:.2f}")
+            _LOGGER.debug(f"Adjusting flow {measured_flow:.2f} to target {flow:.2f}, delta {delta:.2f}")
             if abs(delta) < deadband:
                 return
 
