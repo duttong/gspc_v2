@@ -129,12 +129,14 @@ class DetectLowFlow(Runnable):
     def __init__(self, context: Execute.Context, origin: float, end: float,
                  flow: float, threshold: float,
                  increment: typing.Optional[float] = None,
+                 low_flow_detected: typing.Optional[typing.Callable[[], typing.Awaitable[None]]] = None,
                  low_flow_mode: typing.Optional[typing.Callable[[], typing.Awaitable[None]]] = None):
         Runnable.__init__(self, context, origin)
         self._duration = end - origin
         self._flow = flow
         self._threshold = threshold
         self._increment = increment
+        self._low_flow_detected = low_flow_detected
         self._low_flow_mode = low_flow_mode
 
     async def _monitor_flow(self):
@@ -143,10 +145,13 @@ class DetectLowFlow(Runnable):
         while time.time() <= end_time:
             measured_flow = await self.context.interface.get_flow_signal()
             if measured_flow < self._threshold:
+                # tries to adjust flow if that doesn't work runs the self._low_flow_mode method.
                 if low_begin_time is None:
                     low_begin_time = time.time()
                     if self._increment is not None:
                         await self.context.interface.increment_flow(self._flow, self._increment)
+                    if self._low_flow_detected is not None:
+                        await self._low_flow_detected()
                     _LOGGER.info(f"Low flow detected")
                 elif time.time() - low_begin_time >= self.TRIGGER_SECONDS:
                     if self._low_flow_mode is not None:
