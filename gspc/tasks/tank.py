@@ -27,14 +27,21 @@ class Tank(Sample):
         data.ssv_pos = self._selection
 
         async def low_flow_detected():
+            """ called if low flow is detected """
+            data.low_flow_count += 1
+
+        async def low_flow_mode():
+            """ called after low flow is detected twice """
+            await maintain_sample_flow.stop()
             await context.interface.set_overflow(False)
             data.low_flow = "Y"
+            data.low_flow_count += 1
 
         result = Sample.schedule(self, context, data) + [
             FullFlow(context, context.origin + 69),
 
             DetectLowFlow(context, sample_origin + 1, sample_post_origin, math.inf,
-                          LOW_FLOW_THRESHOLD, None, low_flow_detected),
+                          LOW_FLOW_THRESHOLD, None, low_flow_detected, low_flow_mode),
 
             # Redundant? appears to always happen
             # OverflowOff(context, sample_post_origin + 4),

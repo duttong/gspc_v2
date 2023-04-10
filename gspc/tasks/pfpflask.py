@@ -75,9 +75,15 @@ class PFPFlask(Sample):
                                             SAMPLE_FLOW, LOWER_SAMPLE_FLOW, UPPER_SAMPLE_FLOW)
 
         async def low_flow_detected():
+            """ called if low flow is detected """
+            data.low_flow_count += 1
+
+        async def low_flow_mode():
+            """ called after low flow is detected twice """
             await maintain_sample_flow.stop()
             await context.interface.set_overflow(False)
             data.low_flow = "Y"
+            data.low_flow_count += 1
 
         abort_after_cycle = AbortPoint(context, context.origin + CYCLE_SECONDS)
         abort_flow_invalid = AbortPoint(context, sample_post_origin + 160)
@@ -116,7 +122,7 @@ class PFPFlask(Sample):
                          SAMPLE_FLOW, LOWER_SAMPLE_FLOW),
             maintain_sample_flow,
             DetectLowFlow(context, sample_origin + 1, sample_post_origin, SAMPLE_FLOW,
-                          LOW_FLOW_THRESHOLD, 3.0, low_flow_detected),
+                          LOW_FLOW_THRESHOLD, 3.0, low_flow_detected, low_flow_mode),
 
             EnableGCCryogen(context, sample_post_origin - 240),
             DisableGCCryogen(context, sample_post_origin + 360),
