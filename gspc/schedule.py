@@ -217,56 +217,45 @@ class Execute:
         self._aborted = False
         self.abort_message = None
         self.events.clear()
-        completed_time = time.time()
-        completed_origin = -math.inf
-        consumed_wait_time = 0.0
+        zero_real_time = time.time()
+        zero_monotonic_time = time.monotonic()
 
         async def wait_for_ready(running: Runnable) -> bool:
-            nonlocal consumed_wait_time
-
             if not math.isfinite(running.origin):
                 need_break = self._break_event.is_set()
                 self._break_event.clear()
                 return not need_break
 
-            delay = running.origin - completed_origin
-            delay -= consumed_wait_time
-            assert math.isfinite(delay)
+            target_time = running.origin + zero_monotonic_time
+            delay = target_time - time.monotonic()
             if delay <= 0.0:
                 need_break = self._break_event.is_set()
                 self._break_event.clear()
                 return not need_break
 
-            begin_wait = time.monotonic()
             try:
                 await asyncio.wait_for(self._break_event.wait(), timeout=delay)
             except (TimeoutError, asyncio.TimeoutError):
                 # Timeout means the delay has elapsed, so we're ready to execute
                 return True
-            consumed_wait_time += time.monotonic() - begin_wait
 
             self._break_event.clear()
             return False
 
         def update_future_events():
-            nonlocal completed_origin
+            nonlocal zero_real_time
 
             # Remove all future events so they can be regenerated
             self.events = {e: d for e, d in self.events.items() if d.occurred}
             stop_events = set()
-            for next_run in run:
-                # If we don't yet have an origin, set it to this one
-                if not math.isfinite(completed_origin):
-                    completed_origin = next_run.origin
-
-                expected_time = next_run.origin - completed_origin
-                expected_time += completed_time
+            for future_run in run:
+                expected_time = future_run.origin + zero_real_time
                 if not math.isfinite(expected_time):
                     continue
 
-                for event in next_run.clear_events:
+                for event in future_run.clear_events:
                     stop_events.add(event)
-                for event in next_run.set_events:
+                for event in future_run.set_events:
                     if event in stop_events:
                         continue
                     if event in self.events:
@@ -300,10 +289,7 @@ class Execute:
                     origin = modified_contexts[-1].origin + modified_tasks[-1].origin_advance
                 else:
                     origin = 0.0
-                if not math.isfinite(completed_origin):
-                    first_possible_origin = consumed_wait_time
-                else:
-                    first_possible_origin = completed_origin + consumed_wait_time
+                first_possible_origin = time.monotonic() - zero_monotonic_time
 
                 for task in append:
                     context = self.Context(interface, self, origin, index)
@@ -325,17 +311,24 @@ class Execute:
             run.sort(key=lambda runnable: runnable.origin)
 
         async def get_next_execute() -> typing.Optional[Runnable]:
-            nonlocal consumed_wait_time
             nonlocal run
+            nonlocal zero_monotonic_time
+            nonlocal zero_real_time
             while run:
                 if self._paused is not None:
                     # So that unscheduled events are updated
                     await self.state_update()
 
                     _LOGGER.debug("Schedule processing paused")
+                    pause_begin = time.monotonic()
                     await self._paused
+                    pause_consumed = time.monotonic() - pause_begin
                     self._paused = None
                     _LOGGER.debug("Schedule processing resumed")
+
+                    # Apply a delay so that the pause "doesn't happen" with respect to time scheduling
+                    zero_monotonic_time += pause_consumed
+                    zero_real_time += pause_consumed
                     continue
 
                 if self._aborted:
@@ -366,33 +359,28 @@ class Execute:
                 if not await wait_for_ready(to_run):
                     continue
 
-                consumed_wait_time = 0.0
                 run = run[1:]
                 return to_run
 
             return None
 
         async def execute_pending(running: Runnable):
-            nonlocal completed_time
-            nonlocal completed_origin
-
+            nonlocal zero_monotonic_time
+            nonlocal zero_real_time
             # Mark as executing
             running.context.task_activated = True
             await self.state_update()
 
-            use_real_time = await running.execute()
+            delay_schedule = await running.execute()
 
-            if use_real_time or not math.isfinite(completed_origin):
-                completed_time = time.time()
-            else:
-                completed_time += running.origin - completed_origin
-
-            # This is accurate even for real time actions, since we never couple it to absolute
-            # time.  So even ones that delay will still mean the subsequent ones wait as long
-            # as the delay between them and the next should be.
-            completed_origin = running.origin
+            if delay_schedule and math.isfinite(running.origin):
+                # Change the zero origin so that time spent delaying is removed and the current time "becomes"
+                # the start of executing the delaying runnable
+                zero_monotonic_time = time.monotonic() - running.origin
+                zero_real_time = time.time() - running.origin
 
             # Completed now, so record events that were processed
+            completed_time = time.time()
             for event in running.clear_events:
                 self.events.pop(event, None)
             for event in running.set_events:
@@ -422,10 +410,12 @@ class Execute:
 
         if self._aborted:
             await self._abort_processing()
+            self._break_event = None
+            return False
         else:
             await self._complete_processing()
-        self._break_event = None
-        return True
+            self._break_event = None
+            return True
 
     async def abort(self, message: typing.Optional[str] = None):
         """Abort the running schedule."""
