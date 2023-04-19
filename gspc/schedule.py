@@ -24,9 +24,13 @@ class Runnable:
         self.set_events: typing.Set[str] = set()
         self.clear_events: typing.Set[str] = set()
 
-    async def execute(self) -> typing.Optional[bool]:
-        """Execute the task.  Return true if the task should shift subsequent ones by its execution time."""
+    async def execute(self):
+        """Execute the action.  This is scheduled for background execution and does not delay the schedule."""
         pass
+
+    async def delay(self) -> bool:
+        """Execute in blocking context, if true then the time taken delays the schedule."""
+        return False
 
 
 class Gate(Runnable):
@@ -56,7 +60,7 @@ class Gate(Runnable):
         self._futures_waiting.append(gate.future)
         return gate
 
-    async def execute(self) -> bool:
+    async def delay(self) -> bool:
         self._total_completed = 0
 
         if self._required_ready is None:
@@ -87,10 +91,11 @@ class AbortPoint(Runnable):
         if message is not None:
             self._abort_message = message
 
-    async def execute(self):
+    async def delay(self):
         if not self._aborted:
-            return
+            return False
         await self.context.schedule.abort(self._abort_message)
+        return False
 
 
 class Task:
@@ -148,27 +153,6 @@ class Execute:
         """Called when part of the schedule state has changed"""
         pass
 
-    async def _execute_run(self, running: Runnable, completed_origin: float) -> typing.Optional[bool]:
-        if not math.isfinite(running.origin):
-            running.context.task_activated = True
-            await self.state_update()
-            return await running.execute()
-
-        delay = running.origin - completed_origin
-        assert math.isfinite(delay)
-        if delay > 0.0:
-            await asyncio.sleep(delay)
-
-        if self._paused is not None:
-            _LOGGER.debug("Schedule processing paused")
-            await self._paused
-            self._paused = None
-            _LOGGER.debug("Schedule processing resumed")
-
-        running.context.task_activated = True
-        await self.state_update()
-        return await running.execute()
-
     async def _abort_processing(self):
         for task in self._background_tasks:
             if task.done():
@@ -191,7 +175,7 @@ class Execute:
             try:
                 await task
             except:
-                pass
+                _LOGGER.warning("Error in background task", exc_info=True)
         self._background_tasks.clear()
 
         _LOGGER.debug("Schedule processing completed")
@@ -371,8 +355,9 @@ class Execute:
             running.context.task_activated = True
             await self.state_update()
 
-            delay_schedule = await running.execute()
+            await self.start_background(running.execute())
 
+            delay_schedule = await running.delay()
             if delay_schedule and math.isfinite(running.origin):
                 # Change the zero origin so that time spent delaying is removed and the current time "becomes"
                 # the start of executing the delaying runnable
@@ -465,3 +450,14 @@ class Execute:
         task = asyncio.create_task(execute)
         self._background_tasks.add(task)
         return task
+
+    async def complete_background(self):
+        """Wait for completion of all background tasks"""
+        while len(self._background_tasks) != 0:
+            to_wait = list(self._background_tasks)
+            self._background_tasks.clear()
+            for task in to_wait:
+                try:
+                    await task
+                except:
+                    _LOGGER.warning("Error in background task", exc_info=True)

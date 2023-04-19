@@ -14,7 +14,7 @@ class ZeroFlow(Runnable):
         Runnable.__init__(self, context, origin)
         self._duration = duration
 
-    async def _zero_flow(self):
+    async def execute(self):
         self.context.interface.sample_flow_zero_offset = 0.0
         end_time = time.time() + self._duration
         flow_sum = 0.0
@@ -30,9 +30,6 @@ class ZeroFlow(Runnable):
         zero_flow = flow_sum / flow_count
         self.context.interface.sample_flow_zero_offset = -zero_flow
         _LOGGER.info(f"Measured zero flow as {zero_flow:.1f}")
-
-    async def execute(self):
-        await self.context.schedule.start_background(self._zero_flow())
 
 
 class FullFlow(Runnable):
@@ -80,18 +77,15 @@ class FeedbackFlow(Runnable):
         Runnable.__init__(self, context, origin)
         self._flow = flow
 
-    async def _feedback_loop(self):
+    async def execute(self):
+        await self.context.interface.set_flow(self._flow)
+
         for iteration in range(15):
             if abs(await self.context.interface.get_flow_signal() - self._flow) <= self.DEADBAND:
                 return
             await self.context.interface.adjust_flow(self._flow)
             await asyncio.sleep(self.SETTLING_TIME)
         _LOGGER.warning(f"Flow control feedback failed")
-
-    async def execute(self):
-        await self.context.interface.set_flow(self._flow)
-        await self.context.schedule.start_background(self._feedback_loop())
-        _LOGGER.info(f"Setting flow to {self._flow:.1f} with feedback")
 
 
 class MaintainFlow(Runnable):
@@ -104,7 +98,7 @@ class MaintainFlow(Runnable):
         self._upper = upper
         self._stopped = False
 
-    async def _monitor_flow(self):
+    async def execute(self):
         end_time = time.time() + self._duration
         while time.time() <= end_time and not self._stopped:
             measured_flow = await self.context.interface.get_flow_signal()
@@ -115,9 +109,6 @@ class MaintainFlow(Runnable):
                 await self.context.interface.increment_flow(self._flow, -1.0)
                 _LOGGER.info(f"Decreased flow")
             await asyncio.sleep(1)
-
-    async def execute(self):
-        await self.context.schedule.start_background(self._monitor_flow())
 
     async def stop(self):
         self._stopped = True
@@ -139,7 +130,7 @@ class DetectLowFlow(Runnable):
         self._low_flow_detected = low_flow_detected
         self._low_flow_mode = low_flow_mode
 
-    async def _monitor_flow(self):
+    async def execute(self):
         end_time = time.time() + self._duration
         low_begin_time = None
         while time.time() <= end_time:
@@ -161,9 +152,6 @@ class DetectLowFlow(Runnable):
             else:
                 low_begin_time = None
             await asyncio.sleep(1)
-
-    async def execute(self):
-        await self.context.schedule.start_background(self._monitor_flow())
 
 
 class RecordLastFlow(Runnable):

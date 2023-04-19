@@ -15,8 +15,9 @@ class BasicRunnable(gspc.schedule.Runnable):
             else:
                 self.clear_events.add(event)
 
-    async def execute(self):
+    async def delay(self):
         self._target[self._key] = True
+        return False
 
 
 class BasicTask(gspc.schedule.Task):
@@ -61,9 +62,10 @@ class GateRunnable(gspc.schedule.Runnable):
         self._key = key
         self._gate = gate
 
-    async def execute(self):
+    async def delay(self):
         self._target[self._key] = self._key
         self._gate()
+        return True
 
 
 class GateTask(gspc.schedule.Task):
@@ -162,9 +164,11 @@ class AbortRunnable(BasicRunnable):
         self._abort = abort
         self._message = message
 
-    async def execute(self):
+    async def delay(self):
         await BasicRunnable.execute(self)
+        await BasicRunnable.delay(self)
         await self._abort.abort(self._message)
+        return False
 
 
 class AbortTask(gspc.schedule.Task):
@@ -228,16 +232,18 @@ class BreakTask(gspc.schedule.Task):
             gspc.schedule.Runnable.__init__(self, context, origin)
             self.reached = reached
 
-        async def execute(self):
+        async def delay(self):
             self.reached.set_result(True)
+            return False
 
     class _Resume(gspc.schedule.Runnable):
         def __init__(self, context: gspc.schedule.Execute.Context, origin: float, resume):
             gspc.schedule.Runnable.__init__(self, context, origin)
             self.resume = resume
 
-        async def execute(self):
+        async def delay(self):
             await self.resume
+            return False
 
     def schedule(self, context: gspc.schedule.Execute.Context):
         return [

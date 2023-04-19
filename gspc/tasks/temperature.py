@@ -18,7 +18,7 @@ class WaitForOvenCool(Runnable):
         self._cooling_failed = cooling_failed
         self._abort_point = abort_point
 
-    async def execute(self):
+    async def delay(self):
         for i in range(4):
             sig = await self.context.interface.get_oven_temperature_signal()
             if sig is not None and sig >= self.REQUIRED_TEMPERATURE_SIGNAL:

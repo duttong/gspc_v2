@@ -16,7 +16,8 @@ class MeasurePressure(Runnable):
         self._duration = duration
         self._record = record
 
-    async def _sample_pressure(self):
+    async def execute(self):
+        _LOGGER.info("Collecting pressure data")
         end_time = time.time() + self._duration
         pressure_readings = list()
         while time.time() <= end_time:
@@ -28,10 +29,6 @@ class MeasurePressure(Runnable):
         pressure_stddev = statistics.stdev(pressure_readings)
         _LOGGER.info(f"Measured pressure {pressure_mean:.1f} with stddev {pressure_stddev:.2f}")
         self._record(pressure_mean, pressure_stddev, pressure_readings)
-
-    async def execute(self):
-        await self.context.schedule.start_background(self._sample_pressure())
-        _LOGGER.info("Collecting pressure data")
 
 
 class MeasurePFPPressure(Runnable):

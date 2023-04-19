@@ -186,9 +186,10 @@ class CycleBegin(Runnable):
         self.clear_events.add("cycle_end")
         self.data = data
 
-    async def execute(self):
+    async def delay(self):
         self.context.task_started = True
         begin_cycle(self.data)
+        return False
 
 
 class CycleEnd(Runnable):
@@ -199,9 +200,11 @@ class CycleEnd(Runnable):
         self.clear_events.add("gc_trigger")
         self.set_events.add("cycle_end")
 
-    async def execute(self):
+    async def delay(self) -> bool:
+        await self.context.schedule.complete_background()
         self.context.task_completed = True
         complete_cycle()
+        return True
 
 
 class Sample(Task):

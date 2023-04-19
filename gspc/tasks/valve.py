@@ -45,25 +45,25 @@ class EvacuateOff(Runnable):
 
 class LoadSwitch(Runnable):
     async def execute(self):
-        await self.context.schedule.start_background(self.context.interface.valve_load())
+        await self.context.interface.valve_load()
         _LOGGER.info("Valve set to LOAD")
 
 
 class InjectSwitch(Runnable):
     async def execute(self):
-        await self.context.schedule.start_background(self.context.interface.valve_inject())
+        await self.context.interface.valve_inject()
         _LOGGER.info("Valve set to INJECT")
 
 
 class PreColumnIn(Runnable):
     async def execute(self):
-        await self.context.schedule.start_background(self.context.interface.precolumn_in())
+        await self.context.interface.precolumn_in()
         _LOGGER.info("Precolumn IN line")
 
 
 class PreColumnOut(Runnable):
     async def execute(self):
-        await self.context.schedule.start_background(self.context.interface.precolumn_out())
+        await self.context.interface.precolumn_out()
         _LOGGER.info("Precolumn OUT of line")
 
 
@@ -85,15 +85,12 @@ class PFPValveOpen(Runnable):
         self._pfp_index = pfp_index
         self._record = record
 
-    async def _manipulate_valve(self):
+    async def execute(self):
+        _LOGGER.debug(f"Setting PFP{self._ssv} valve {self._pfp_index} OPEN")
         response = await self.context.interface.set_pfp_valve(self._ssv, self._pfp_index, True)
         _LOGGER.info(f"PFP{self._ssv} valve {self._pfp_index} OPEN: {response}")
         if self._record:
             self._record(response)
-
-    async def execute(self):
-        await self.context.schedule.start_background(self._manipulate_valve())
-        _LOGGER.debug(f"Setting PFP{self._ssv} valve {self._pfp_index} OPEN")
 
 
 class PFPValveClose(Runnable):
@@ -104,12 +101,9 @@ class PFPValveClose(Runnable):
         self._pfp_index = pfp_index
         self._record = record
 
-    async def _manipulate_valve(self):
+    async def execute(self):
+        _LOGGER.debug(f"Setting PFP{self._ssv} valve {self._pfp_index} CLOSED")
         response = await self.context.interface.set_pfp_valve(self._ssv, self._pfp_index, False)
         _LOGGER.info(f"PFP{self._ssv} valve {self._pfp_index} CLOSED: {response}")
         if self._record:
             self._record(response)
-
-    async def execute(self):
-        await self.context.schedule.start_background(self._manipulate_valve())
-        _LOGGER.debug(f"Setting PFP{self._ssv} valve {self._pfp_index} CLOSED")
