@@ -59,7 +59,11 @@ class Pressure:
         async def execute_read() -> float:
             self._port.write(b"p\r")
             v = self._port.readline()
-            v = v.strip().split()[0]
+            try:
+                v = v.strip().split()[0]
+            except IndexError:
+                # Added try/except due to an occasional empty read.
+                return None
             v = float(v)
             return v
 
