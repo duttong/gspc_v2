@@ -135,12 +135,12 @@ class Window(Main):
             abort_message = self._active_schedule.abort_message
 
         def message_gui():
-            if abort_message is not None:
-                QtWidgets.QMessageBox.warning(self, "Schedule Aborted", f"Task execution aborted: {abort_message}")
             self.set_stopped()
             self._active_schedule = None
             self.log_event("Tasks completed")
             self._schedule_complete.emit()
+            if abort_message is not None:
+                QtWidgets.QMessageBox.warning(self, "Schedule Aborted", f"Task execution aborted: {abort_message}")
 
         call_on_ui(message_gui)
 
