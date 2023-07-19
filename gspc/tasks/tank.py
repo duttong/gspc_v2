@@ -60,7 +60,7 @@ class Tank(Sample):
         else:
             result += [
                 SetSSV(context, context.origin, self._selection),
-                OverflowOn(context, context.origin),
-                HighPressureOn(context, context.origin),
+                OverflowOn(context, context.origin + 3),
+                HighPressureOn(context, context.origin + 3),
             ]
         return result
