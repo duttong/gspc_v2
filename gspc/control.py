@@ -133,6 +133,7 @@ class Window(Main):
         if not await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
                 self._active_schedule.execute(self._interface), self._loop)):
             abort_message = self._active_schedule.abort_message
+            await self._interface.shutdown()
 
         def message_gui():
             self.set_stopped()
