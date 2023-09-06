@@ -45,7 +45,6 @@ class Instrument(Interface):
     # Source index -> digital channel
     HIGH_PRESSURE_VALVES = {
         2: DOT_ISOVALVE_SSV2,
-        9: DOT_ISOVALVE_SSV2,
         13: "EIO1",
         14: "EIO0",
         15: "EIO6",
