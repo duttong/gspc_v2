@@ -221,6 +221,8 @@ class Sample(Task):
         data.sample_number = int(context.origin / CYCLE_SECONDS) + 1
 
         abort_after_cycle = AbortPoint(context, context.origin + CYCLE_SECONDS)
+        abort_after_injection = AbortPoint(context, sample_post_origin + 8)
+
         result = [
             CycleBegin(context, context.origin, data),
 
@@ -244,7 +246,7 @@ class Sample(Task):
             MeasurePressure(context, context.origin + SAMPLE_OPEN_AT - 7, 7, data.record_pressure_start),
 
             WaitForOvenCool(context, sample_post_origin - 15,
-                            data.cryo_extended, abort_after_cycle),
+                            data.cryo_extended, abort_after_injection),
             RecordLastFlow(context, sample_post_origin - 2, data.record_last_flow),
 
             GCReady(context, sample_post_origin + 1),
