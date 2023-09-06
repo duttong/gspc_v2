@@ -85,8 +85,10 @@ class PFPFlask(Sample):
             data.low_flow = "Y"
             data.low_flow_count += 1
 
-        abort_after_cycle = AbortPoint(context, context.origin + CYCLE_SECONDS)
+        #abort_after_cycle = AbortPoint(context, context.origin + CYCLE_SECONDS)
+        abort_after_injection = AbortPoint(context, sample_post_origin + 8)
         abort_flow_invalid = AbortPoint(context, sample_post_origin + 160)
+
         result = [
             CycleBegin(context, context.origin, data),
 
@@ -133,7 +135,7 @@ class PFPFlask(Sample):
             PFPValveClose(context, sample_post_origin + 30, self._ssv, self._pfp, data.record_pfp_close),
 
             WaitForOvenCool(context, sample_post_origin - 15,
-                            data.cryo_extended, abort_after_cycle),
+                            data.cryo_extended, abort_after_injection),
             RecordLastFlow(context, sample_post_origin - 2, data.record_last_flow),
 
             GCReady(context, sample_post_origin + 1),
@@ -155,7 +157,7 @@ class PFPFlask(Sample):
             MeasurePFPPressure(context, sample_post_origin + 20, self._ssv, None),
 
             abort_flow_invalid,
-            abort_after_cycle,
+            abort_after_injection,
             CycleEnd(context, context.origin + CYCLE_SECONDS),
         ]
         if prior_post_origin > 0.0:
