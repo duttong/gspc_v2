@@ -220,7 +220,7 @@ class Sample(Task):
 
         data.sample_number = int(context.origin / CYCLE_SECONDS) + 1
 
-        abort_after_cycle = AbortPoint(context, context.origin + CYCLE_SECONDS)
+        #abort_after_cycle = AbortPoint(context, context.origin + CYCLE_SECONDS)
         abort_after_injection = AbortPoint(context, sample_post_origin + 8)
 
         result = [
@@ -257,9 +257,10 @@ class Sample(Task):
             OverflowOff(context, sample_post_origin + 3),
 
             MeasurePressure(context, sample_post_origin + 4, 16, data.record_pressure_end),
+            abort_after_injection,
             CheckSampleTemperature(context, sample_post_origin + 69),
 
-            abort_after_cycle,
+            #abort_after_cycle,
             CycleEnd(context, context.origin + CYCLE_SECONDS),
         ]
         if context.origin > 0.0:
