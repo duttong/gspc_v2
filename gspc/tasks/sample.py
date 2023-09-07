@@ -66,17 +66,17 @@ class Data(CycleData):
         self.header("\t".join([
             "Filename", "Date", "Time",
             "Sample#",
-            "Net Pressure",
-            "SampType",
             "SSVPos",
-            "Last flow",
+            "SampType",
+            "Net Pressure",
+            "Init P",
+            "Final P",
+            "InitP RSD",
+            "FinalP RSD",
             "Low Flow?",
             "cryocount",
-            "Mean1",
-            "Mean2",
-            "%Error1",
-            "%Error2",
             "loflocount",
+            "Last flow",
             "Last vflow",
             "pfpFlask",
             "pfpOPEN",
@@ -96,18 +96,18 @@ class Data(CycleData):
             pct_error1 = None
             pct_error2 = None
         return [
-            net_pressure is not None and f"{net_pressure:.2f}" or "NONE",
-            self.sample_type is not None and f"{self.sample_type}" or "NONE",
             self.ssv_pos is not None and f"{self.ssv_pos}" or "NONE",
-            self.last_flow is not None and f"{self.last_flow:.2f}" or "NONE",
+            self.sample_type is not None and f"{self.sample_type}" or "NONE",
+            net_pressure is not None and f"{net_pressure:.3f}" or "NONE",
+            self.mean1 is not None and f"{self.mean1:.3f}" or "NONE",
+            self.mean2 is not None and f"{self.mean2:.3f}" or "NONE",
+            pct_error1 is not None and f"{pct_error1:.3f}" or "NONE",
+            pct_error2 is not None and f"{pct_error2:.3f}" or "NONE",
             self.low_flow is not None and f"{self.low_flow}" or "N",
             self.cryo_extra_count is not None and f"{self.cryo_extra_count}" or "0",
-            self.mean1 is not None and f"{self.mean1:.2f}" or "NONE",
-            self.mean2 is not None and f"{self.mean2:.2f}" or "NONE",
-            pct_error1 is not None and f"{pct_error1:.2f}" or "NONE",
-            pct_error2 is not None and f"{pct_error2:.2f}" or "NONE",
             self.low_flow_count is not None and f"{self.low_flow_count}" or "0",
-            self.last_flow_control is not None and f"{self.last_flow_control:.2f}" or "NONE",
+            self.last_flow is not None and f"{self.last_flow:.3f}" or "NONE",
+            self.last_flow_control is not None and f"{self.last_flow_control:.3f}" or "NONE",
         ]
 
     @staticmethod
@@ -121,7 +121,7 @@ class Data(CycleData):
         fields = [
             self.current_file_name() or "NONE",
             time.strftime("%Y-%m-%d", now),
-            time.strftime("%H-%M-%S", now),
+            time.strftime("%H:%M:%S", now),
             self.sample_number and f"{self.sample_number}" or "NONE",
         ]
         net_pressure = None
@@ -132,24 +132,24 @@ class Data(CycleData):
         self._log_fields(["date", "time", "filename", "sample#"])
         self._log_fields([self.current_file_name() or "NONE",
                           time.strftime("%Y-%m-%d", now),
-                          time.strftime("%H-%M-%S", now),
+                          time.strftime("%H:%M:%S", now),
                           self.sample_number and f"{self.sample_number}" or "NONE"
                           ])
         log_message("")
 
         self._log_fields(["data (torr)", "mean", "std dev", "net change"])
         if self.data1 is not None:
-            self._log_fields([f"{value:.2f}" for value in self.data1])
+            self._log_fields([f"{value:.3f}" for value in self.data1])
         self._log_fields(["XXXXXXXXX",
-                          self.mean1 and f"{self.mean1:.2f}" or "NONE",
-                          self.stddev1 and f"{self.stddev1:.2f}" or "NONE"])
+                          self.mean1 and f"{self.mean1:.3f}" or "NONE",
+                          self.stddev1 and f"{self.stddev1:.3f}" or "NONE"])
 
         if self.data2 is not None:
-            self._log_fields([f"{value:.2f}" for value in self.data2])
+            self._log_fields([f"{value:.3f}" for value in self.data2])
         self._log_fields(["XXXXXXXXX",
-                          self.mean2 and f"{self.mean2:.2f}" or "NONE",
-                          self.stddev2 and f"{self.stddev2:.2f}" or "NONE",
-                          net_pressure and f"{net_pressure:.2f}" or "NONE"])
+                          self.mean2 and f"{self.mean2:.3f}" or "NONE",
+                          self.stddev2 and f"{self.stddev2:.3f}" or "NONE",
+                          net_pressure and f"{net_pressure:.3f}" or "NONE"])
         log_message("")
 
     def abort(self, message: typing.Optional[str] = None):
