@@ -275,6 +275,7 @@ class Instrument(Interface):
     async def initialization(self):
         """ This method is called when gspc starts. Sets al of the digio lines
             to low (False). """
+        await self.set_ssv(2)
         await self._lj.write_digital(f'CIO1', False)
         await self._lj.write_digital(f'CIO2', False)
         await self._lj.write_digital(f'CIO3', False)
@@ -286,4 +287,5 @@ class Instrument(Interface):
         await self.initialization()
         await self.set_high_pressure_valve(True)
         await self.set_flow(3)
+        await self.set_overflow(True)
         self._flow_control_voltage = None
