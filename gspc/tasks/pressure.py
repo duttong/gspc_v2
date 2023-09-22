@@ -43,7 +43,7 @@ class MeasurePFPPressure(Runnable):
         if pressure is None:
             _LOGGER.info(f"Measured PFP ssv={self._ssv} pressure not read properly.")
         else:
-            _LOGGER.info(f"Measured PFP ssv={self._ssv} pressure {pressure:.1f}")
+            _LOGGER.info(f"Measured PFP ssv={self._ssv} pressure {pressure:.2f}")
         if self._record:
             self._record(pressure)
 
