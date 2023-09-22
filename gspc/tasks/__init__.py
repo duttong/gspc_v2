@@ -27,4 +27,4 @@ for i in range(1, 13):
 for i in range(1, 13):
     register_task(f"PFP12 Flask {i}", PFPFlask(i, 12))
 
-register_task("Zero", Zero())
+#register_task("Zero", Zero())
