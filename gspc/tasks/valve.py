@@ -10,37 +10,37 @@ _LOGGER = logging.getLogger(__name__)
 class OverflowOn(Runnable):
     async def execute(self):
         await self.context.interface.set_overflow(True)
-        _LOGGER.debug("Overflow valve ON")
+        _LOGGER.info("Overflow valve ON")
 
 
 class OverflowOff(Runnable):
     async def execute(self):
         await self.context.interface.set_overflow(False)
-        _LOGGER.debug("Overflow valve OFF")
+        _LOGGER.info("Overflow valve OFF")
 
 
 class HighPressureOn(Runnable):
     async def execute(self):
         await self.context.interface.set_high_pressure_valve(True)
-        _LOGGER.debug("High pressure valve ON")
+        _LOGGER.info("High pressure valve ON")
 
 
 class HighPressureOff(Runnable):
     async def execute(self):
         await self.context.interface.set_high_pressure_valve(False)
-        _LOGGER.debug("High pressure valve OFF")
+        _LOGGER.info("High pressure valve OFF")
 
 
 class EvacuateOn(Runnable):
     async def execute(self):
         await self.context.interface.set_evacuation_valve(True)
-        _LOGGER.debug("Evacuation valve ON")
+        _LOGGER.info("Evacuation valve ON")
 
 
 class EvacuateOff(Runnable):
     async def execute(self):
         await self.context.interface.set_evacuation_valve(False)
-        _LOGGER.debug("Evacuation valve OFF")
+        _LOGGER.info("Evacuation valve OFF")
 
 
 class LoadSwitch(Runnable):
@@ -74,7 +74,7 @@ class SetSSV(Runnable):
 
     async def execute(self):
         await self.context.interface.set_ssv(self._source)
-        _LOGGER.debug(f"SSV set to {self._source}")
+        _LOGGER.info(f"SSV set to {self._source}")
 
 
 class PFPValveOpen(Runnable):
