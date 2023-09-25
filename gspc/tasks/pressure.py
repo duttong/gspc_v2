@@ -27,7 +27,7 @@ class MeasurePressure(Runnable):
             await asyncio.sleep(1)
         pressure_mean = statistics.mean(pressure_readings)
         pressure_stddev = statistics.stdev(pressure_readings)
-        _LOGGER.info(f"Measured pressure {pressure_mean:.1f} with stddev {pressure_stddev:.2f}")
+        _LOGGER.info(f"Measured pressure {pressure_mean:.2f} with stddev {pressure_stddev:.2f}")
         self._record(pressure_mean, pressure_stddev, pressure_readings)
 
 

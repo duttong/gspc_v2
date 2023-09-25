@@ -29,7 +29,7 @@ class ZeroFlow(Runnable):
             return
         zero_flow = flow_sum / flow_count
         self.context.interface.sample_flow_zero_offset = -zero_flow
-        _LOGGER.info(f"Measured zero flow as {zero_flow:.1f}")
+        _LOGGER.info(f"Measured zero flow as {zero_flow:.2f}")
 
 
 class FullFlow(Runnable):
@@ -48,7 +48,7 @@ class StaticFlow(Runnable):
 
     async def execute(self):
         await self.context.interface.set_flow(self._flow)
-        _LOGGER.info(f"Set flow to {self._flow:.1f}")
+        _LOGGER.info(f"Set flow to {self._flow:.2f}")
 
 
 class CheckNegativeFlow(Runnable):
