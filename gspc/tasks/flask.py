@@ -58,13 +58,14 @@ class Flask(Sample):
                           LOW_FLOW_THRESHOLD, 3.0, low_flow_detected, low_flow_mode),
 
             # Redundant? appears to always happen
+            # same call in sample.py at +3. Yes, it's redundant
             # OverflowOff(context, sample_post_origin + 4),
         ]
         if context.origin > 0.0:
             result += [
                 SetSSV(context, context.origin - 814, self._selection),
                 # FeedbackFlow(context, context.origin - 813, INITIAL_FLOW),
-                StaticFlow(context, context.origin, INITIAL_FLOW),
+                StaticFlow(context, context.origin, INITIAL_FLOW),  # <- bug? no time subtracted from context.origin. added. GSD
 
                 SetSSV(context, context.origin - 435, self._selection),
                 OverflowOn(context, context.origin - 420),
@@ -80,8 +81,8 @@ class Flask(Sample):
             result += [
                 HighPressureOff(context, context.origin),
                 SetSSV(context, context.origin, self._selection),
-                OverflowOn(context, context.origin),
+                OverflowOn(context, context.origin + 9),
 
-                FeedbackFlow(context, context.origin + 6, INITIAL_FLOW),
+                FeedbackFlow(context, context.origin + 10, INITIAL_FLOW),
             ]
         return result
