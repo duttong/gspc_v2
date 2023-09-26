@@ -237,7 +237,8 @@ class Sample(Task):
             SampleOpen(context, context.origin + SAMPLE_OPEN_AT),
             SampleClose(context, sample_post_origin),
 
-            PreColumnIn(context, sample_post_origin - 120),
+            #PreColumnIn(context, sample_post_origin - 120),
+            PreColumnIn(context, context.origin + 42),
             PreColumnOut(context, sample_post_origin + 150),
 
             EnableGCCryogen(context, sample_post_origin - 240),
