@@ -9,7 +9,7 @@ class Interface(ABC):
     def __init__(self, loop: asyncio.AbstractEventLoop):
         self._loop = loop
 
-        self.sample_flow_zero_offset: float = 1.45  # sign switched to + GSD 20230925
+        self.sample_flow_zero_offset: float = -1.4
 
     @abstractmethod
     async def get_pressure(self) -> float:
