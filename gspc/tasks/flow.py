@@ -48,7 +48,7 @@ class StaticFlow(Runnable):
 
     async def execute(self):
         await self.context.interface.set_flow(self._flow)
-        _LOGGER.info(f"Set flow to {self._flow:.2f}")
+        #_LOGGER.info(f"Set flow to {self._flow:.2f}")
 
 
 class CheckNegativeFlow(Runnable):
