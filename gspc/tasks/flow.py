@@ -104,10 +104,10 @@ class MaintainFlow(Runnable):
             measured_flow = await self.context.interface.get_flow_signal()
             if self._lower is not None and measured_flow < self._lower:
                 await self.context.interface.increment_flow(self._flow, 1.0)
-                _LOGGER.info(f"Increased flow")
+                _LOGGER.info(f"Increased flow {measured_flow:0.3f}")
             elif self._upper is not None and measured_flow > self._upper:
                 await self.context.interface.increment_flow(self._flow, -1.0)
-                _LOGGER.info(f"Decreased flow")
+                _LOGGER.info(f"Decreased flow {measured_flow:0.3f}")
             await asyncio.sleep(1)
 
     async def stop(self):

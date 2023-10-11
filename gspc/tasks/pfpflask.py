@@ -108,20 +108,21 @@ class PFPFlask(Sample):
             CheckNegativeFlow(context, context.origin + 6, abort_flow_invalid),
             FeedbackFlow(context, context.origin + 6, INITIAL_FLOW),
 
-            StaticFlow(context, context.origin + 81, INITIAL_FLOW),
+            #StaticFlow(context, context.origin + 81, INITIAL_FLOW),
             CheckNegativeFlow(context, context.origin + 83, abort_flow_invalid),
             FeedbackFlow(context, context.origin + 83, SAMPLE_FLOW),
             CheckNegativeFlow(context, context.origin + 126, abort_flow_invalid),
             FeedbackFlow(context, context.origin + 126, SAMPLE_FLOW),
-            StaticFlow(context, sample_post_origin + 175, INITIAL_FLOW),  # Should this just be full flow?
+            #StaticFlow(context, sample_post_origin + 175, INITIAL_FLOW),  # Should this just be full flow?
             FullFlow(context, sample_post_origin + 176),
 
             VacuumOn(context, context.origin + 121),
 
             MeasurePressure(context, context.origin + SAMPLE_OPEN_AT - 7, 7, data.record_pressure_start),
 
-            MaintainFlow(context, context.origin + 111, sample_origin,
-                         SAMPLE_FLOW, LOWER_SAMPLE_FLOW),
+            # this is happing at the same time as FeedbackFlow
+            #MaintainFlow(context, context.origin + 111, sample_origin,
+            #             SAMPLE_FLOW, LOWER_SAMPLE_FLOW),
             maintain_sample_flow,
             DetectLowFlow(context, sample_origin + 1, sample_post_origin, SAMPLE_FLOW,
                           LOW_FLOW_THRESHOLD, 3.0, low_flow_detected, low_flow_mode),
