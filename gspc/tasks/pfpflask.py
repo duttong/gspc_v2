@@ -60,7 +60,7 @@ class PFPFlask(Sample):
         self._evac_ssv = ssv_selection - 1
 
     def schedule(self, context: Execute.Context, data: typing.Optional[Data] = None) -> typing.List[Runnable]:
-        sample_origin = context.origin + SAMPLE_OPEN_AT + 2
+        sample_origin = context.origin + SAMPLE_OPEN_AT
         sample_post_origin = context.origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
         prior_post_origin = context.origin - CYCLE_SECONDS + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
@@ -71,7 +71,7 @@ class PFPFlask(Sample):
         data.pfp_index = self._pfp
         data.sample_number = int(context.origin / CYCLE_SECONDS) + 1
 
-        maintain_sample_flow = MaintainFlow(context, sample_origin, sample_post_origin,
+        maintain_sample_flow = MaintainFlow(context, sample_origin + 2, sample_post_origin,
                                             SAMPLE_FLOW, LOWER_SAMPLE_FLOW, UPPER_SAMPLE_FLOW)
 
         async def low_flow_detected():

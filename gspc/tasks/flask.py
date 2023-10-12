@@ -23,7 +23,7 @@ class Flask(Sample):
 
     def schedule(self, context: Execute.Context,
                  data: typing.Optional[Data] = None) -> typing.List[Runnable]:
-        sample_origin = context.origin + SAMPLE_OPEN_AT + 2
+        sample_origin = context.origin + SAMPLE_OPEN_AT
         sample_post_origin = context.origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
         if data is None:
@@ -31,7 +31,7 @@ class Flask(Sample):
         data.sample_type = "flask"
         data.ssv_pos = self._selection
 
-        maintain_sample_flow = MaintainFlow(context, sample_origin, sample_post_origin,
+        maintain_sample_flow = MaintainFlow(context, sample_origin + 2, sample_post_origin,
                                             SAMPLE_FLOW, LOWER_SAMPLE_FLOW, UPPER_SAMPLE_FLOW)
 
         async def low_flow_detected():
