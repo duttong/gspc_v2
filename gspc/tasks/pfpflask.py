@@ -82,6 +82,7 @@ class PFPFlask(Sample):
             """ called after low flow is detected twice """
             await maintain_sample_flow.stop()
             await context.interface.set_overflow(False)
+            _LOGGER.info("Low flow. Overflow valve OFF")
             data.low_flow = "Y"
             data.low_flow_count += 1
 

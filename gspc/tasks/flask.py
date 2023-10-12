@@ -9,6 +9,8 @@ from .sample import *
 from .flow import *
 from .vacuum import *
 
+_LOGGER = logging.getLogger(__name__)
+
 INITIAL_FLOW = 3
 SAMPLE_FLOW = 7.2
 UPPER_SAMPLE_FLOW = 1.3
@@ -42,6 +44,7 @@ class Flask(Sample):
             """ called after low flow is detected twice """
             await maintain_sample_flow.stop()
             await context.interface.set_overflow(False)
+            _LOGGER.info("Low flow. Overflow valve OFF")
             data.low_flow = "Y"
             data.low_flow_count += 1
 
