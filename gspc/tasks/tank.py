@@ -18,7 +18,7 @@ class Tank(Sample):
         self._selection = selection
 
     def schedule(self, context: Execute.Context, data: typing.Optional[Data] = None) -> typing.List[Runnable]:
-        sample_origin = context.origin + SAMPLE_OPEN_AT
+        sample_origin = context.origin + SAMPLE_OPEN_AT + 2
         sample_post_origin = context.origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
         if data is None:

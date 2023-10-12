@@ -60,7 +60,7 @@ class PFPFlask(Sample):
         self._evac_ssv = ssv_selection - 1
 
     def schedule(self, context: Execute.Context, data: typing.Optional[Data] = None) -> typing.List[Runnable]:
-        sample_origin = context.origin + SAMPLE_OPEN_AT
+        sample_origin = context.origin + SAMPLE_OPEN_AT + 2
         sample_post_origin = context.origin + SAMPLE_OPEN_AT + SAMPLE_SECONDS
         prior_post_origin = context.origin - CYCLE_SECONDS + SAMPLE_OPEN_AT + SAMPLE_SECONDS
 
@@ -114,7 +114,7 @@ class PFPFlask(Sample):
             CheckNegativeFlow(context, context.origin + 126, abort_flow_invalid),
             FeedbackFlow(context, context.origin + 126, SAMPLE_FLOW),
             #StaticFlow(context, sample_post_origin + 175, INITIAL_FLOW),  # Should this just be full flow?
-            FullFlow(context, sample_post_origin + 176),
+            #FullFlow(context, sample_post_origin + 176),
 
             VacuumOn(context, context.origin + 121),
 
