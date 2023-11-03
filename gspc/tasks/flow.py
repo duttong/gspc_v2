@@ -62,14 +62,24 @@ class CheckNegativeFlow(Runnable):
         if measured_flow >= 0.0:
             return
         await self.context.interface.set_overflow(False)
-        _LOGGER.info(f"Sample flow rate ({measured_flow}) less than zero, cycle will abort")
+        _LOGGER.info(f"Sample flow rate ({measured_flow:.3f}) less than zero, cycle will abort")
         if self._abort_point:
             await self._abort_point.abort("Negative sample flow")
         else:
             await self.context.schedule.abort("Negative sample flow")
 
-
 class FeedbackFlow(Runnable):
+    def __init__(self, context: Execute.Context, origin: float, flow: float):
+        Runnable.__init__(self, context, origin)
+        self._flow = flow
+
+    async def execute(self):
+        await self.context.interface.adjust_flow(self._flow)
+
+
+# this routine call adjust_flow up to 15 times. However, adjust_flow runs for 15 seconds.
+# Simplified (see above)
+class FeedbackFlow_OLD(Runnable):
     DEADBAND = 0.15
     SETTLING_TIME = 0.3
 
