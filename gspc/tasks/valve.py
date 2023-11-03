@@ -10,13 +10,29 @@ _LOGGER = logging.getLogger(__name__)
 class OverflowOn(Runnable):
     async def execute(self):
         await self.context.interface.set_overflow(True)
-        _LOGGER.info("Overflow valve ON")
+        #_LOGGER.info("Overflow valve ON")
+
+
+class OverflowOn_pcheck(Runnable):
+    LOW_MANIFOLD_PRESS = 15.0
+
+    def __init__(self, context: Execute.Context, origin: float, ssv: int):
+        Runnable.__init__(self, context, origin)
+        self._ssv = ssv
+
+    async def execute(self):
+        pressure = await self.context.interface.get_pfp_pressure(self._ssv)
+        if pressure > self.LOW_MANIFOLD_PRESS:
+            await self.context.interface.set_overflow(True)
+        else:
+            await self.context.interface.set_overflow(False)
+            _LOGGER.info("Low Manifold Pressure - Leaving Overflow OFF")
 
 
 class OverflowOff(Runnable):
     async def execute(self):
         await self.context.interface.set_overflow(False)
-        _LOGGER.info("Overflow valve OFF")
+        #_LOGGER.info("Overflow valve OFF")
 
 
 class HighPressureOn(Runnable):
