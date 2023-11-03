@@ -114,6 +114,10 @@ class Instrument(Interface):
         await self._lj.write_digital(self.DOT_HEAT_CRYO_TRAP, enable)
 
     async def set_overflow(self, enable: bool):
+        if enable:
+            _LOGGER.info('Overflow ON')
+        else:
+            _LOGGER.info('Overflow OFF')
         await self._lj.write_digital(self.DOT_OVERFLOW, enable)
 
     async def valve_load(self):
