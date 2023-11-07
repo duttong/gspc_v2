@@ -105,7 +105,7 @@ class PFPFlask(Sample):
 
             StaticFlow(context, context.origin + 3, INITIAL_FLOW),
 
-            OverflowOn_pcheck(context, context.origin + 5, data.record_pfp_pressure2),
+            OverflowOn_pcheck(context, context.origin + 5, data.pfp_pressure2),
             CheckNegativeFlow(context, context.origin + 6, abort_flow_invalid),
             FeedbackFlow(context, context.origin + 6, INITIAL_FLOW),
 
