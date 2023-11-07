@@ -105,7 +105,7 @@ class PFPFlask(Sample):
 
             StaticFlow(context, context.origin + 3, INITIAL_FLOW),
 
-            OverflowOn_pcheck(context, context.origin + 5, self._ssv),
+            OverflowOn_pcheck(context, context.origin + 5, data.record_pfp_pressure2),
             CheckNegativeFlow(context, context.origin + 6, abort_flow_invalid),
             FeedbackFlow(context, context.origin + 6, INITIAL_FLOW),
 
@@ -184,7 +184,7 @@ class PFPFlask(Sample):
                 CryogenTrapHeaterOff(context, context.origin - 150),
 
                 MeasurePFPPressure(context, context.origin - 123, self._ssv, data.record_pfp_pressure1),
-                MeasurePFPPressure(context, context.origin - 108, self._ssv, data.record_pfp_pressure2),
+                MeasurePFPPressure(context, context.origin - 103, self._ssv, data.record_pfp_pressure2),
                 CheckPFPEvacuated(context, context.origin - 120, self._ssv),
 
                 PFPValveOpen(context, context.origin - 115, self._ssv, self._pfp, data.record_pfp_open),
