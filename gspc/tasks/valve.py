@@ -14,15 +14,16 @@ class OverflowOn(Runnable):
 
 
 class OverflowOn_pcheck(Runnable):
+    """ Checks to see if the pfp_pressure is greater than LOW_MANIFOLD_PRESS if so
+        the overflow valve is opened. Otherwise leave closed. """
     LOW_MANIFOLD_PRESS = 15.0
 
-    def __init__(self, context: Execute.Context, origin: float, ssv: int):
+    def __init__(self, context: Execute.Context, origin: float, pfp_pressure: float):
         Runnable.__init__(self, context, origin)
-        self._ssv = ssv
+        self._pfp_pressure = pfp_pressure
 
     async def execute(self):
-        pressure = await self.context.interface.get_pfp_pressure(self._ssv)
-        if pressure > self.LOW_MANIFOLD_PRESS:
+        if self._pfp_pressure > self.LOW_MANIFOLD_PRESS:
             await self.context.interface.set_overflow(True)
         else:
             await self.context.interface.set_overflow(False)
