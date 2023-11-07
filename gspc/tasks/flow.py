@@ -59,10 +59,10 @@ class CheckNegativeFlow(Runnable):
 
     async def execute(self):
         measured_flow = await self.context.interface.get_flow_signal()
-        if measured_flow >= -0.05:      # changed tolarance from 0.0 to -0.05
+        if measured_flow >= -0.05:      # changed tolerance from 0.0 to -0.05
             return
         await self.context.interface.set_overflow(False)
-        _LOGGER.info(f"Sample flow rate ({measured_flow:.3f}) less than zero, cycle will abort")
+        _LOGGER.info(f"Negative Flow: sample flow rate ({measured_flow:.3f}) less than zero, cycle will abort")
         if self._abort_point:
             await self._abort_point.abort("Negative sample flow")
         else:
