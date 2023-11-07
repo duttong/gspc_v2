@@ -94,6 +94,7 @@ class AbortPoint(Runnable):
     async def delay(self):
         if not self._aborted:
             return False
+        _LOGGER.info(f'GSPC ABORTED: {self._abort_message}')
         await self.context.schedule.abort(self._abort_message)
         return False
 
