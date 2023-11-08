@@ -18,12 +18,12 @@ class OverflowOn_pcheck(Runnable):
         the overflow valve is opened. Otherwise leave closed. """
     LOW_MANIFOLD_PRESS = 15.0
 
-    def __init__(self, context: Execute.Context, origin: float, pfp_pressure: float):
+    def __init__(self, context: Execute.Context, origin: float, pfp_pressure: typing.Callable[[], float]):
         Runnable.__init__(self, context, origin)
         self._pfp_pressure = pfp_pressure
 
     async def execute(self):
-        if self._pfp_pressure > self.LOW_MANIFOLD_PRESS:
+        if self._pfp_pressure() > self.LOW_MANIFOLD_PRESS:
             await self.context.interface.set_overflow(True)
         else:
             await self.context.interface.set_overflow(False)
