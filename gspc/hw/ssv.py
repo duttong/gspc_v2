@@ -66,7 +66,8 @@ class SSV:
             v = self._port.readline()
             v = self._parse_cp(v.decode())
             # handle port 16 differently. If 16 return 0
-            v = 0 if v == 16 else v
+            # v = 0 if v == 16 else v
+            # changed this behavior 231113
             return int(v)
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
