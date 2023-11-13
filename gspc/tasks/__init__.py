@@ -16,11 +16,12 @@ register_task("Flask 10", Flask(10))
 register_task("Flask 11", Flask(11))
 register_task("Flask 12", Flask(12))
 
-register_task("Tank 0", Tank(0))
+#register_task("Tank 0", Tank(0))
 register_task("Tank 2", Tank(2))
 register_task("Tank 13", Tank(13))
 register_task("Tank 14", Tank(14))
 register_task("Tank 15", Tank(15))
+register_task("Tank 16", Tank(16))
 
 for i in range(1, 13):
     register_task(f"PFP1 Flask {i}", PFPFlask(i, 1))
