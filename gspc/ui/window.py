@@ -413,6 +413,7 @@ class Main(QtWidgets.QMainWindow):
         self.apply_ssv.setText("Change SSV")
         self.selected_ssv = QtWidgets.QSpinBox(control_pane)
         self.selected_ssv.setRange(1, 16)
+        self.selected_ssv.setWrapping(True)
         control_layout.addWidget(self._line_layout(control_pane, self.apply_ssv, self.selected_ssv))
 
         self.apply_flow = QtWidgets.QPushButton(control_pane)
