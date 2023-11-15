@@ -57,7 +57,7 @@ class PFPFlask(Sample):
         Sample.__init__(self)
         self._pfp = pfp_number
         self._ssv = ssv_selection
-        self._evac_ssv = ssv_selection - 1
+        self._evac_ssv = 16 if ssv_selection == 1 else ssv_selection - 1
 
     def schedule(self, context: Execute.Context, data: typing.Optional[Data] = None) -> typing.List[Runnable]:
         sample_origin = context.origin + SAMPLE_OPEN_AT
