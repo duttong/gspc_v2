@@ -54,7 +54,7 @@ class Instrument(Interface):
     # Source index -> digital channel
     # The evacuation is done at PFP position - 1, so these are 1 and 12
     EVACUATION_VALVES = {
-        0: DOT_EVAC_PORT_1,
+        16: DOT_EVAC_PORT_1,
         11: DOT_EVAC_PORT_12,
     }
 
