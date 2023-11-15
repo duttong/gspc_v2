@@ -187,7 +187,7 @@ class PFPFlask(Sample):
                 MeasurePFPPressure(context, context.origin - 103, self._ssv, data.record_pfp_pressure2),
                 CheckPFPEvacuated(context, context.origin - 120, self._ssv),
 
-                PFPValveOpen(context, context.origin - 115, self._ssv, self._pfp, data.record_pfp_open),
+                PFPValveOpen(context, context.origin - 110, self._ssv, self._pfp, data.record_pfp_open),
             ]
         else:
             result += [

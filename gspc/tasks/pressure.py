@@ -61,7 +61,7 @@ class CheckPFPEvacuated(Runnable):
             _LOGGER.info(f"PFF inlet evacuated ok")
             return
         elif sig is not None and sig > self.REQUIRED_PRESSURE_SIGNAL:
-            _LOGGER.info(f"PFP inlet pressure too high (f{sig:.3f} > {self.REQUIRED_PRESSURE_SIGNAL}), aborting")
+            _LOGGER.info(f"PFP inlet pressure too high ({sig:.2f} > {self.REQUIRED_PRESSURE_SIGNAL}), aborting")
             await self.context.schedule.abort("Inlet pressure too high")
         else:
             _LOGGER.info(f"PFP manifold pressure is NONE ?")
