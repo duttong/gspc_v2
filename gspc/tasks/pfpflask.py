@@ -184,7 +184,7 @@ class PFPFlask(Sample):
                 CryogenTrapHeaterOff(context, context.origin - 150),
 
                 MeasurePFPPressure(context, context.origin - 123, self._ssv, data.record_pfp_pressure1),
-                MeasurePFPPressure(context, context.origin - 103, self._ssv, data.record_pfp_pressure2),
+                MeasurePFPPressure(context, context.origin - 98, self._ssv, data.record_pfp_pressure2),
                 CheckPFPEvacuated(context, context.origin - 120, self._ssv),
 
                 PFPValveOpen(context, context.origin - 110, self._ssv, self._pfp, data.record_pfp_open),
