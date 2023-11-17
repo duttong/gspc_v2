@@ -55,7 +55,7 @@ class PFP:
     def _get_unload_prompt(port: serial.Serial) -> bool:
         try:
             port.reset_input_buffer()
-            port.write(b' \r')
+            port.write(b'\r')
             resp = port.readlines()
             resp = ''.join(map(str, resp))
             if "UNLOAD>" in resp:
@@ -63,21 +63,22 @@ class PFP:
             for i in range(5):
                 if "AS>" in resp:
                     break
-                port.write(b'Q\r')
                 port.reset_input_buffer()
-                port.write(b' \r')
+                port.write(b'Q\r')
                 resp = port.readlines()
                 resp = ''.join(map(str, resp))
             else:
-                # AS> prompt not reached
+                _LOGGER.info(f'Failed to reach UNLOAD prompt, AS> not found.')
                 return False
             port.write(b'U\r')
             resp = port.readlines()
             resp = ''.join(map(str, resp))
             if "UNLOAD>" in resp:
                 return True
-        except (ValueError, serial.SerialException):
-            pass
+        except (ValueError, serial.SerialException) as e:
+            _LOGGER.info(f'Exception found. Failed to reach UNLOAD prompt. {e}')
+
+        _LOGGER.info(f'Failed to reach UNLOAD prompt.')
         return False
 
     def _prompt_unload(self):
