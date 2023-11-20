@@ -71,22 +71,28 @@ class pfp_test():
            returns valve and status """
 
         self._prompt_unload()
-        self._port.write(b"O\r%d\r" % pos)
+        self._port.write(b'O\r')
+        sleep(.5)
+        self._port.write(b'%d\r' % pos)
         print(f"Attempting to Open PFP valve {pos}")
         sleep(10)
         response = self._port.readlines()
         response = ''.join([s.decode("utf-8") for s in response])
+        print(response)
         return response[24:-8].strip()
 
     def close_valve(self, pos: int) -> str:
         """Close a sample valve"""
 
         self._prompt_unload()
-        self._port.write(b"C\r%d\r" % pos)
+        self._port.write(b"C\r")
+        sleep(.5)
+        self._port.write(b'%d\r' % pos)
         print(f"Attempting to Close PFP valve {pos}")
         sleep(10)
         response = self._port.readlines()
         response = ''.join([s.decode("utf-8") for s in response])
+        print(response)
         return response[24:-8].strip()
 
 
