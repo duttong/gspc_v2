@@ -121,7 +121,7 @@ class PFPFlask(Sample):
 
             MeasurePressure(context, context.origin + SAMPLE_OPEN_AT - 7, 7, data.record_pressure_start),
 
-            # this is happing at the same time as FeedbackFlow
+            # this is happening at the same time as FeedbackFlow
             #MaintainFlow(context, context.origin + 111, sample_origin,
             #             SAMPLE_FLOW, LOWER_SAMPLE_FLOW),
             maintain_sample_flow,
@@ -152,11 +152,7 @@ class PFPFlask(Sample):
             MeasurePressure(context, sample_post_origin + 4, 16, data.record_pressure_end),
             CheckSampleTemperature(context, sample_post_origin + 69),
 
-            # extra pressure measurements added GSD
-            MeasurePFPPressure(context, sample_post_origin + 6, self._ssv, None),
-            MeasurePFPPressure(context, sample_post_origin + 10, self._ssv, None),
             MeasurePFPPressure(context, sample_post_origin + 15, self._ssv, data.record_pfp_pressure3),
-            MeasurePFPPressure(context, sample_post_origin + 20, self._ssv, None),
 
             abort_flow_invalid,
             abort_after_injection,
@@ -169,6 +165,13 @@ class PFPFlask(Sample):
 
                 SetSSV(context, prior_post_origin + 182, self._evac_ssv),
                 EvacuateOn(context, prior_post_origin + 198),
+                MeasurePFPPressure(context, prior_post_origin + 200, self._ssv, None),
+                MeasurePFPPressure(context, prior_post_origin + 230, self._ssv, None),
+                MeasurePFPPressure(context, prior_post_origin + 260, self._ssv, None),
+                MeasurePFPPressure(context, prior_post_origin + 290, self._ssv, None),
+                MeasurePFPPressure(context, prior_post_origin + 350, self._ssv, None),
+                MeasurePFPPressure(context, prior_post_origin + 410, self._ssv, None),
+                MeasurePFPPressure(context, prior_post_origin + 470, self._ssv, None),
             ]
 
         if context.origin > 0.0:
