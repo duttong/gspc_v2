@@ -120,7 +120,9 @@ class PFP:
 
         async def execute_write() -> str:
             self._prompt_unload()
-            self._port.write(b"O\r%d\r" % pos)
+            self._port.write(b"O\r")
+            await asyncio.sleep(0.5)
+            self._port.write(b"%d\r" % pos)
             _LOGGER.info(f"Attempting to Open PFP valve {pos}")
             await asyncio.sleep(10)
             response = self._port.readlines()
@@ -134,7 +136,9 @@ class PFP:
 
         async def execute_write() -> str:
             self._prompt_unload()
-            self._port.write(b"C\r%d\r" % pos)
+            self._port.write(b"C\r")
+            await asyncio.sleep(0.5)
+            self._port.write(b"%d\r" % pos)
             _LOGGER.info(f"Attempting to Close PFP valve {pos}")
             await asyncio.sleep(10)
             response = self._port.readlines()
