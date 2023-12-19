@@ -153,11 +153,11 @@ class DetectLowFlow(Runnable):
                         await self.context.interface.increment_flow(self._flow, self._increment)
                     if self._low_flow_detected is not None:
                         await self._low_flow_detected()
-                    _LOGGER.info(f"Low flow detected")
+                    _LOGGER.info(f"Low flow detected. Flow = {measured_flow}")
                 elif time.time() - low_begin_time >= self.TRIGGER_SECONDS:
                     if self._low_flow_mode is not None:
                         await self._low_flow_mode()
-                    _LOGGER.info(f"Extended low flow detected")
+                    _LOGGER.info(f"Extended low flow detected. Flow = {measured_flow}")
                     return
             else:
                 low_begin_time = None
