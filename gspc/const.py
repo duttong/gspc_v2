@@ -4,6 +4,6 @@ PATCH_VERSION = 0
 __short_version__ = f'{MAJOR_VERSION}.{MINOR_VERSION}'
 __version__ = f'{__short_version__}.{PATCH_VERSION}'
 
-CYCLE_SECONDS = 22.0 * 60
+CYCLE_SECONDS = 23.5 * 60
 SAMPLE_OPEN_AT = 151
 SAMPLE_SECONDS = 4.5 * 60
