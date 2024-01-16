@@ -157,7 +157,7 @@ class Instrument(Interface):
 
     @staticmethod
     def _to_adjustment_increment(delta: float):
-        return (abs(delta) * 2 + 1) * 0.025  # Changed increment size from 0.01 to 0.025
+        return (abs(delta) * 2 + 1) * 0.03  # Changed increment size from 0.01 to 0.03
 
     async def adjust_flow(self, flow: float):
         if self._flow_control_voltage is None:
