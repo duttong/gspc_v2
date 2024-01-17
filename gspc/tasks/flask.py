@@ -70,6 +70,7 @@ class Flask(Sample):
                 SetSSV(context, context.origin - 814, self._selection),
 
                 SetSSV(context, context.origin - 435, self._selection),
+                StaticFlow(context, context.origin - 427, INITIAL_FLOW),     # added 230117
                 OverflowOn(context, context.origin - 425),
                 FeedbackFlow(context, context.origin - 420, INITIAL_FLOW),
                 OverflowOff(context, context.origin - 350),
