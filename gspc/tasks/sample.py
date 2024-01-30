@@ -243,7 +243,7 @@ class Sample(Task):
             EnableGCCryogen(context, sample_post_origin - 240),
             DisableGCCryogen(context, sample_post_origin + 360),
 
-            MeasurePressure(context, context.origin + SAMPLE_OPEN_AT - 7, 7, data.record_pressure_start),
+            MeasurePressure(context, context.origin + SAMPLE_OPEN_AT - 8, 7, data.record_pressure_start),
 
             WaitForOvenCool(context, sample_post_origin - 15,
                             data.cryo_extended, abort_after_injection),
