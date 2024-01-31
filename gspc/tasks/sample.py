@@ -185,6 +185,7 @@ class CycleBegin(Runnable):
         self.clear_events.add("gc_trigger")
         self.clear_events.add("cycle_end")
         self.data = data
+        _LOGGER.info("CycleBegin: Context.origin is 0")
 
     async def delay(self):
         self.context.task_started = True
