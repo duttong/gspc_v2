@@ -170,6 +170,7 @@ class Instrument(Interface):
             measured_flow = await self.get_flow_signal()
             delta = measured_flow - flow
             if abs(delta) < deadband:
+                _LOGGER.info(f"{i} Within tolerance {measured_flow:.2f} of target {flow:.2f}, delta {delta:.2f}")
                 return
 
             inc = self._to_adjustment_increment(delta)
@@ -180,7 +181,7 @@ class Instrument(Interface):
                 self._flow_control_voltage -= inc
             self._flow_control_voltage = _clamp(self._flow_control_voltage, 0, 12)
             await self._lj.write_analog(self.AOT_FLOW, self._flow_control_voltage)
-            _LOGGER.info(f"{i} Adjusting flow {measured_flow:.2f} to target {flow:.2f}, delta {delta:.2f}, org {org:0.3f}, inc {inc:0.3f}, new voltage {self._flow_control_voltage:0.3f}, offset = {self.sample_flow_zero_offset:0.3f}")
+            _LOGGER.info(f"{i} Adjusting flow {measured_flow:.2f} to target {flow:.2f}, delta {delta:.2f}, org {org:0.3f}, inc {inc:0.3f}, new voltage {self._flow_control_voltage:0.3f}, offset = {self.sample_flow_zero_offset:0.2f}")
             await asyncio.sleep(1.0)
 
         _LOGGER.info(f"Failed to adjust flow {measured_flow:.2f} to target {flow:.2f}")
