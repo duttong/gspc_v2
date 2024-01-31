@@ -54,7 +54,7 @@ class Flask(Sample):
             #FeedbackFlow(context, context.origin + 111, SAMPLE_FLOW),
             #FeedbackFlow(context, context.origin + 123, SAMPLE_FLOW),
 
-            # this is happing at the same time as FeedbackFlow + 123
+            # this is happening at the same time as FeedbackFlow + 123
             MaintainFlow(context, context.origin + 111, sample_origin,
                          SAMPLE_FLOW, LOWER_SAMPLE_FLOW),
             maintain_sample_flow,
