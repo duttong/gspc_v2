@@ -52,11 +52,11 @@ class Flask(Sample):
             #StaticFlow(context, context.origin + 69, SAMPLE_FLOW),
             FeedbackFlow(context, context.origin + 71, SAMPLE_FLOW),
             #FeedbackFlow(context, context.origin + 111, SAMPLE_FLOW),
-            #FeedbackFlow(context, context.origin + 123, SAMPLE_FLOW),
+            FeedbackFlow(context, context.origin + 123, SAMPLE_FLOW),
 
             # this is happening at the same time as FeedbackFlow + 123
-            MaintainFlow(context, context.origin + 111, sample_origin,
-                         SAMPLE_FLOW, LOWER_SAMPLE_FLOW),
+            #MaintainFlow(context, context.origin + 111, sample_origin,
+            #             SAMPLE_FLOW, LOWER_SAMPLE_FLOW),
             maintain_sample_flow,
             DetectLowFlow(context, sample_origin + 1, sample_post_origin, SAMPLE_FLOW,
                           LOW_FLOW_THRESHOLD, 3.0, low_flow_detected, low_flow_mode),

@@ -186,6 +186,11 @@ class Instrument(Interface):
 
         _LOGGER.info(f"Failed to adjust flow {measured_flow:.2f} to target {flow:.2f}")
 
+    async def log_flow(self):
+        measured_flow = await self.get_flow_signal()
+        volts = await self.get_flow_control_output()
+        _LOGGER.info(f"Current flow: {measured_flow:.3f}, volts = {volts:.3f}")
+
     async def increment_flow(self, flow: float, multiplier: float):
         if self._flow_control_voltage is None:
             await self.set_flow(flow)

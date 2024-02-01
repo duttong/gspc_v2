@@ -185,7 +185,6 @@ class CycleBegin(Runnable):
         self.clear_events.add("gc_trigger")
         self.clear_events.add("cycle_end")
         self.data = data
-        _LOGGER.info("CycleBegin: Context.origin is 0")
 
     async def delay(self):
         self.context.task_started = True
@@ -235,8 +234,11 @@ class Sample(Task):
             LoadSwitch(context, sample_post_origin + 57),
             VacuumOff(context, sample_post_origin + 59),
 
+            LogFlow(context, context.origin + SAMPLE_OPEN_AT - 1),       # added 240201
             SampleOpen(context, context.origin + SAMPLE_OPEN_AT),
             SampleClose(context, sample_post_origin),
+
+            StaticFlow(context, sample_post_origin + 2, 3), # added 240201 to set the valve to a well defined value.
 
             PreColumnIn(context, sample_post_origin - 120),
             PreColumnOut(context, sample_post_origin + 150),

@@ -173,3 +173,11 @@ class RecordLastFlow(Runnable):
     async def execute(self):
         self._record(await self.context.interface.get_flow_signal(),
                      await self.context.interface.get_flow_control_output())
+
+
+class LogFlow(Runnable):
+    def __init__(self, context: Execute.Context, origin: float):
+        Runnable.__init__(self, context, origin)
+
+    async def execute(self):
+        self.context.interface.log_flow()
