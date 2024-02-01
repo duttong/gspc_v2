@@ -180,4 +180,4 @@ class LogFlow(Runnable):
         Runnable.__init__(self, context, origin)
 
     async def execute(self):
-        self.context.interface.log_flow()
+        await self.context.interface.log_flow()
