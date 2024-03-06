@@ -41,6 +41,7 @@ class Flask(Sample):
             """ called if low flow is detected """
             # Increament the flow by a factor of 5.0 = 0.1 volts (the normal step size is 0.02 volts)
             await self.context.interface.increment_flow(self._flow, 5.0)
+            _LOGGER.info(f"Increase flow by increasing pneutroincs 0.1 volts")
             data.low_flow_count += 1
 
         async def low_flow_mode():
