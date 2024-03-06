@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 
 INITIAL_FLOW = 3
 #SAMPLE_FLOW = 7.2
-SAMPLE_FLOW = 6.8   # temporarily changed 240306
+SAMPLE_FLOW = 6.7   # temporarily changed 240306
 UPPER_SAMPLE_FLOW = 1.3
 LOWER_SAMPLE_FLOW = 0.5
 LOW_FLOW_THRESHOLD = 0.2
