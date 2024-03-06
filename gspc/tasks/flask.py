@@ -12,7 +12,8 @@ from .vacuum import *
 _LOGGER = logging.getLogger(__name__)
 
 INITIAL_FLOW = 3
-SAMPLE_FLOW = 7.2
+#SAMPLE_FLOW = 7.2
+SAMPLE_FLOW = 6.8   # temporarily changed 240306
 UPPER_SAMPLE_FLOW = 1.3
 LOWER_SAMPLE_FLOW = 0.5
 LOW_FLOW_THRESHOLD = 0.2
@@ -38,6 +39,8 @@ class Flask(Sample):
 
         async def low_flow_detected():
             """ called if low flow is detected """
+            # Increament the flow by a factor of 5.0 = 0.1 volts (the normal step size is 0.02 volts)
+            await self.context.interface.increment_flow(self._flow, 5.0)
             data.low_flow_count += 1
 
         async def low_flow_mode():
