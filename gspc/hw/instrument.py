@@ -195,7 +195,8 @@ class Instrument(Interface):
         if self._flow_control_voltage is None:
             await self.set_flow(flow)
 
-        self._flow_control_voltage += multiplier * 0.02
+        # changed scale factor from 0.02 to 0.06 on 240318
+        self._flow_control_voltage += multiplier * 0.06
         self._flow_control_voltage = _clamp(self._flow_control_voltage, 0, 12)
         await self._lj.write_analog(self.AOT_FLOW, self._flow_control_voltage)
 
