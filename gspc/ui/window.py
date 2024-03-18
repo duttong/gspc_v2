@@ -405,9 +405,11 @@ class Main(QtWidgets.QMainWindow):
         self.evacuate_toggle.setCheckable(True)
         control_layout.addWidget(self._line_layout(control_pane, self.evacuate_toggle))
 
+        """
         self.trigger_gc = QtWidgets.QPushButton(control_pane)
         self.trigger_gc.setText("Trigger GCMS")
         control_layout.addWidget(self._line_layout(control_pane, self.trigger_gc))
+        """
 
         self.apply_ssv = QtWidgets.QPushButton(control_pane)
         self.apply_ssv.setText("Change SSV")
