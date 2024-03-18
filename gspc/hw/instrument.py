@@ -301,6 +301,7 @@ class Instrument(Interface):
     async def shutdown(self):
         await self.initialization()
         await self.set_high_pressure_valve(True)
+        await self.set_cryo_heater(False)
         await self.set_flow(3)
         await self.set_overflow(True)
         self._flow_control_voltage = None
