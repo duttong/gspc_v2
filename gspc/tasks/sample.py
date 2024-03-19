@@ -229,7 +229,7 @@ class Sample(Task):
             EnableCryogen(context, context.origin + 1),
             DisableCryogen(context, sample_post_origin - 5),
 
-            CycleVacuum(context, context.origin + 36),
+            #CycleVacuum(context, context.origin + 36),
             VacuumOn(context, context.origin + 120),
             LoadSwitch(context, sample_post_origin + 57),
             VacuumOff(context, sample_post_origin + 59),
