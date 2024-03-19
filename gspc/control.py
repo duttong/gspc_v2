@@ -80,7 +80,7 @@ class Window(Main):
         self._hook_interface('set_evacuation_valve', self._interface_set_evacuation_valve)
         self.evacuate_toggle.clicked.connect(self._ui_evacuate_toggle)
 
-        self.trigger_gc.clicked.connect(self._ui_trigger_gc)
+        #self.trigger_gc.clicked.connect(self._ui_trigger_gc)
 
         self._hook_interface('set_ssv', self._interface_set_ssv)
         self.apply_ssv.clicked.connect(self._ui_apply_ssv)
