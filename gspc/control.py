@@ -133,7 +133,6 @@ class Window(Main):
         if not await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
                 self._active_schedule.execute(self._interface), self._loop)):
             abort_message = self._active_schedule.abort_message
-            await self._interface.shutdown()
 
         def message_gui():
             self.set_stopped()
@@ -144,6 +143,7 @@ class Window(Main):
                 QtWidgets.QMessageBox.warning(self, "Schedule Aborted", f"Task execution aborted: {abort_message}")
 
         call_on_ui(message_gui)
+        await self._interface.shutdown()    # put instrument in idle state
 
     def _run_manual_task(self, task: Task, name: str):
         if self._active_schedule is not None:
