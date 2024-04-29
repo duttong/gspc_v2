@@ -214,11 +214,12 @@ class Instrument(Interface):
             # Open overflow if changing the position
             await self.set_overflow(True)
 
-            await self._ssv.set(index)
             for i in range(30):
+                await self._ssv.set(index)
+                await asyncio.sleep(.1)
                 if (await self._ssv.read()) == index:
                     break
-                await asyncio.sleep(1)
+                await asyncio.sleep(.9)
             else:
                 _LOGGER.warning(f"Failed to change SSV to {index}")
 
