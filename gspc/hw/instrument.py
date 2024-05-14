@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _clamp(x, minimum, maximum):
-    maximum = 5   # safty GSD 221208
+    maximum = 5   # safety GSD 221208
     return max(minimum, min(x, maximum))
 
 
@@ -148,7 +148,10 @@ class Instrument(Interface):
 
     @staticmethod
     def _to_flow_control_voltage(flow: float):
-        return _clamp((flow * .05) + 2.6, 0, 12)
+        # old calibration
+        # return _clamp((flow * .05) + 2.6, 0, 12)
+        # calibration 240514
+        return _clamp((flow * .2) + 4.0, 0, 5)
 
     async def set_flow(self, flow: float):
         self._flow_control_voltage = self._to_flow_control_voltage(flow)
