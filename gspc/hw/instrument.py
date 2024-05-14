@@ -150,8 +150,8 @@ class Instrument(Interface):
     def _to_flow_control_voltage(flow: float):
         # old calibration
         # return _clamp((flow * .05) + 2.6, 0, 12)
-        # calibration 240514
-        return _clamp((flow * .2) + 4.0, 0, 5)
+        # calibration 240514 with new pneutroincs valve
+        return _clamp((flow * 0.18) + 1.5, 0, 5)
 
     async def set_flow(self, flow: float):
         self._flow_control_voltage = self._to_flow_control_voltage(flow)
