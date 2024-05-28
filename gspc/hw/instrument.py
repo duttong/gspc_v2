@@ -67,7 +67,7 @@ class Instrument(Interface):
         self._ssv = SSV("COM1")
 
         self._pfp: typing.Dict[typing.Optional[int], PFP] = dict()
-        pfp1: typing.Optional[PFP] = PFP.detect_optional("COM11")
+        pfp1: typing.Optional[PFP] = PFP.detect_optional("COM4")
         if pfp1:
             self._pfp[1] = pfp1
             # Evacuation alias
