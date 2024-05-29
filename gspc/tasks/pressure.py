@@ -58,7 +58,7 @@ class CheckPFPEvacuated(Runnable):
     async def execute(self):
         sig = await self.context.interface.get_pfp_pressure(self._ssv)
         if sig is not None and sig < self.REQUIRED_PRESSURE_SIGNAL:
-            _LOGGER.info(f"PFF inlet evacuated ok")
+            _LOGGER.info(f"PFP inlet evacuated ok")
             return
         elif sig is not None and sig > self.REQUIRED_PRESSURE_SIGNAL:
             _LOGGER.info(f"PFP inlet pressure too high ({sig:.2f} > {self.REQUIRED_PRESSURE_SIGNAL}), aborting")
