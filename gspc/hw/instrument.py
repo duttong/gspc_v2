@@ -74,7 +74,7 @@ class Instrument(Interface):
             self._pfp[0] = pfp1
             # Default alias
             self._pfp[None] = pfp1
-        pfp12: typing.Optional[PFP] = PFP.detect_optional("COM4")
+        pfp12: typing.Optional[PFP] = PFP.detect_optional("COM5") #changed from 3 to 5 10/07/24 SDC
         if pfp12:
             self._pfp[12] = pfp12
             # Evacuation alias
