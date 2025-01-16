@@ -151,7 +151,8 @@ class Instrument(Interface):
         # old calibration
         # return _clamp((flow * .05) + 2.6, 0, 12)
         # calibration 240514 with new pneutroincs valve
-        return _clamp((flow * 0.18) + 1.5, 0, 5)
+        # return _clamp((flow * 0.18) + 1.5, 0, 5) removed 01/15/25
+        return _clamp((flow * 0.07) + 2.1, 0, 5) #added 01/15/2025
 
     async def set_flow(self, flow: float):
         self._flow_control_voltage = self._to_flow_control_voltage(flow)
@@ -160,7 +161,8 @@ class Instrument(Interface):
 
     @staticmethod
     def _to_adjustment_increment(delta: float):
-        return (abs(delta) * 2 + 1) * 0.02  # Changed increment size from 0.01 to 0.02
+        # Feedback flow step increment function
+        return (abs(delta) * 2 + 1) * 0.01  # Changed increment size from 0.01 to 0.02       # Changed back to 0.01 01/16/25 for testing purposes
 
     async def adjust_flow(self, flow: float):
         if self._flow_control_voltage is None:
@@ -198,7 +200,7 @@ class Instrument(Interface):
         if self._flow_control_voltage is None:
             await self.set_flow(flow)
 
-        # changed scale factor from 0.02 to 0.06 on 240318
+        # Only used in Maintain flow regime changed scale factor from 0.02 to 0.06 on 240318
         self._flow_control_voltage += multiplier * 0.06
         self._flow_control_voltage = _clamp(self._flow_control_voltage, 0, 12)
         await self._lj.write_analog(self.AOT_FLOW, self._flow_control_voltage)
