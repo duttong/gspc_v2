@@ -162,7 +162,7 @@ class Instrument(Interface):
     @staticmethod
     def _to_adjustment_increment(delta: float):
         # Feedback flow step increment function
-        return (abs(delta) * 2 + 1) * 0.01  # Changed increment size from 0.01 to 0.02       # Changed back to 0.01 01/16/25 for testing purposes
+        return (abs(delta) * 2 + 1) * 0.01  # Changed increment size from 0.02 to 0.01 01/16/25 
 
     async def adjust_flow(self, flow: float):
         if self._flow_control_voltage is None:
@@ -200,8 +200,8 @@ class Instrument(Interface):
         if self._flow_control_voltage is None:
             await self.set_flow(flow)
 
-        # Only used in Maintain flow regime changed scale factor from 0.02 to 0.06 on 240318
-        self._flow_control_voltage += multiplier * 0.06
+        # Only used in Maintain flow regime 
+        self._flow_control_voltage += multiplier * 0.06  #changed scale factor from 0.06 to 0.04 on 01/16/2025
         self._flow_control_voltage = _clamp(self._flow_control_voltage, 0, 12)
         await self._lj.write_analog(self.AOT_FLOW, self._flow_control_voltage)
 
