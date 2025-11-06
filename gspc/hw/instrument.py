@@ -311,6 +311,6 @@ class Instrument(Interface):
         await self.initialization()
         await self.set_high_pressure_valve(True)
         await self.set_cryo_heater(False)
-        await self.set_flow(15)   #changed from 3 to 15 on 06/03/24 to get flow after sequence completion.
+        await self.set_flow(50)   #changed from 15 (~50% flow) to 50 on 11/06/25 to flush drier with full flow after run completes. 
         await self.set_overflow(True)
         self._flow_control_voltage = None
