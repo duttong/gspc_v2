@@ -80,7 +80,8 @@ class FeedbackFlow(Runnable):
 # this routine call adjust_flow up to 15 times. However, adjust_flow runs for 15 seconds.
 # Simplified (see above)
 class FeedbackFlow_OLD(Runnable):
-    DEADBAND = 0.15
+    #Changed deadband from .15 to .1 11/18/25 to help with high pressure flask sampling flows. 
+    DEADBAND = 0.1
     SETTLING_TIME = 0.3
 
     def __init__(self, context: Execute.Context, origin: float, flow: float):
