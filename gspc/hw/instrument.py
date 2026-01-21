@@ -88,6 +88,13 @@ class Instrument(Interface):
         self._selected_ssv = None
         self._flow_control_voltage = None
         self._pfp_pressure = 0.0
+        self._thermocouple_configured: typing.Set[int] = set()
+
+    async def _ensure_thermocouple_configured(self, address: int) -> None:
+        if address in self._thermocouple_configured:
+            return
+        await self._lj.configure_thermocouple_type_e(address)
+        self._thermocouple_configured.add(address)
 
     @property
     def has_pfp(self) -> bool:
@@ -101,9 +108,11 @@ class Instrument(Interface):
         return await self._lj.read_analog(self.AIN_OVEN_TEMPERATURE)
 
     async def get_thermocouple_temperature_0(self) -> float:
+        await self._ensure_thermocouple_configured(self.AIN_THERMOCOUPLE_0)
         return await self._lj.read_therm(self.AIN_THERMOCOUPLE_0)
 
     async def get_thermocouple_temperature_1(self) -> float:
+        await self._ensure_thermocouple_configured(self.AIN_THERMOCOUPLE_1)
         return await self._lj.read_therm(self.AIN_THERMOCOUPLE_1)
 
     async def set_cryogen(self, enable: bool):
