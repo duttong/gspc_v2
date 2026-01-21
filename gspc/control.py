@@ -54,6 +54,14 @@ class Window(Main):
             self._interface.get_pressure, lambda value: self.sample_pressure.setText(f"{value:8.3f}")
         )))
         self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
+            self._interface.get_thermocouple_temperature_0,
+            lambda value: self.thermocouple_0.setText(f"{value:8.3f}")
+        )))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
+            self._interface.get_thermocouple_temperature_1,
+            lambda value: self.thermocouple_1.setText(f"{value:8.3f}")
+        )))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
             self._interface.get_oven_temperature_signal,
             lambda value: self.oven_temperature.setText(f"{value:8.3f}")
         )))
@@ -148,16 +156,17 @@ class Window(Main):
     def _run_manual_task(self, task: Task, name: str):
         if self._active_schedule is not None:
             return
-        self._active_schedule = _Schedule([task], self)
+        self._active_schedule = _Schedule([task], self, task_names=[name])
         self.set_running(time.time())
         self.current_task.setText(name)
         self._loop.call_soon_threadsafe(lambda: background_task(self._execute_schedule()))
 
-    def start_schedule(self, tasks: typing.Sequence[Task]):
+    def start_schedule(self, tasks: typing.Sequence[Task],
+                       task_names: typing.Optional[typing.Sequence[str]] = None):
         if self._active_schedule is not None:
             return
 
-        self._active_schedule = _Schedule(tasks, self)
+        self._active_schedule = _Schedule(tasks, self, task_names=task_names)
         self.set_running(time.time())
         self._loop.call_soon_threadsafe(lambda: background_task(self._execute_schedule()))
 
@@ -359,8 +368,9 @@ class Window(Main):
 class _Schedule(Execute):
     """The schedule execution class for the main control window."""
 
-    def __init__(self, task_sequence: typing.Sequence[Task], window: Window):
-        Execute.__init__(self, task_sequence)
+    def __init__(self, task_sequence: typing.Sequence[Task], window: Window,
+                 task_names: typing.Optional[typing.Sequence[str]] = None):
+        Execute.__init__(self, task_sequence, task_names=task_names)
         self._window = window
 
     async def state_update(self):
@@ -435,6 +445,8 @@ class Simulator(Interface):
         self.sample_pressure = None
         self.sample_flow = None
         self.oven_temperature = None
+        self.thermocouple_0 = 0.0
+        self.thermocouple_1 = 0.0
         self.high_pressure_on = False
         self.ssv_position = 0
         self.pfp_pressure = None
@@ -488,6 +500,12 @@ class Simulator(Interface):
 
     async def get_oven_temperature_signal(self) -> float:
         return self.oven_temperature
+
+    async def get_thermocouple_temperature_0(self) -> float:
+        return self.thermocouple_0
+
+    async def get_thermocouple_temperature_1(self) -> float:
+        return self.thermocouple_1
 
     async def set_cryogen(self, enable: bool):
         call_on_ui(lambda: self._display.cryogen.setText("ON" if enable else "OFF"))
@@ -591,4 +609,3 @@ class Simulator(Interface):
 
     async def adjust_flow(self, flow: float):
         pass
-

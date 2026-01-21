@@ -325,6 +325,16 @@ class Main(QtWidgets.QMainWindow):
         inputs_layout = QtWidgets.QFormLayout(inputs_pane)
         inputs_pane.setLayout(inputs_layout)
 
+        self.thermocouple_0 = QtWidgets.QLabel(inputs_pane)
+        self.thermocouple_0.setText("0000.00")
+        self.thermocouple_0.setFont(monospace)
+        inputs_layout.addRow("Therm0 (C):", self.thermocouple_0)
+
+        self.thermocouple_1 = QtWidgets.QLabel(inputs_pane)
+        self.thermocouple_1.setText("0000.00")
+        self.thermocouple_1.setFont(monospace)
+        inputs_layout.addRow("Therm1 (C):", self.thermocouple_1)
+
         self.sample_pressure = QtWidgets.QLabel(inputs_pane)
         self.sample_pressure.setText("0000.00")
         self.sample_pressure.setFont(monospace)
@@ -802,13 +812,17 @@ class Main(QtWidgets.QMainWindow):
 
         task_list.clearSelection()
         execute_list = list()
+        task_names = list()
         for i in range(task_list.count()):
             task_item = task_list.item(i)
-            execute_list.append(task_item.data(QtCore.Qt.UserRole).task)
+            task_data = task_item.data(QtCore.Qt.UserRole)
+            execute_list.append(task_data.task)
+            task_names.append(task_data.name)
         _LOGGER.debug(f"Executing task list")
-        self.start_schedule(execute_list)
+        self.start_schedule(execute_list, task_names=task_names)
 
-    def start_schedule(self, tasks: typing.Sequence['gspc.schedule.Task']):
+    def start_schedule(self, tasks: typing.Sequence['gspc.schedule.Task'],
+                       task_names: typing.Optional[typing.Sequence[str]] = None):
         """Called when a schedule start is requested with the list of tasks in the schedule"""
         pass
 

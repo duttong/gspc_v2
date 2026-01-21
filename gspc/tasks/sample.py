@@ -1,6 +1,8 @@
 import logging
 import asyncio
 import typing
+import os
+import time
 from gspc.const import CYCLE_SECONDS, SAMPLE_OPEN_AT, SAMPLE_SECONDS
 from gspc.hw.interface import Interface
 from gspc.schedule import Task, Runnable, Execute, AbortPoint
@@ -61,6 +63,7 @@ class Data(CycleData):
         # Not sure this is actually useful: it would only be non-zero if not in low flow mode and the low flow
         # condition occured 1-s before the end of the cycle (i.e. the last reading was low flow)
         self.low_flow_count: typing.Optional[int] = 0
+        self.temp_log_stop: typing.Optional[asyncio.Event] = None
 
     def _begin(self):
         self.header("\t".join([
@@ -189,22 +192,68 @@ class CycleBegin(Runnable):
     async def delay(self):
         self.context.task_started = True
         begin_cycle(self.data)
+        await _start_temp_log(self.context, self.data)
         return False
 
 
 class CycleEnd(Runnable):
-    def __init__(self, context: Execute.Context, origin: float):
+    def __init__(self, context: Execute.Context, origin: float, data: Data):
         Runnable.__init__(self, context, origin)
         self.clear_events.add("sample_open")
         self.clear_events.add("sample_close")
         self.clear_events.add("gc_trigger")
         self.set_events.add("cycle_end")
+        self.data = data
 
     async def delay(self) -> bool:
+        if self.data.temp_log_stop is not None:
+            self.data.temp_log_stop.set()
         await self.context.schedule.complete_background()
         self.context.task_completed = True
         complete_cycle()
         return True
+
+
+def _temp_log_path(context: Execute.Context) -> typing.Optional[str]:
+    data_file = CycleData.current_file_name()
+    if not data_file:
+        return None
+    output_dir = os.path.dirname(data_file)
+    task_name = context.task_name or f"Task_{context.task_index + 1}"
+    safe_name = task_name.replace("/", "-").replace("\\", "-").replace(" ", "")
+    timestamp = time.strftime("%Y-%m-%d-%H%M%S", time.localtime())
+    return os.path.join(output_dir, f"temps_{timestamp}_{safe_name}.csv")
+
+
+async def _log_temperatures(context: Execute.Context, stop_event: asyncio.Event, file_path: str) -> None:
+    try:
+        with open(file_path, "a+") as file:
+            if file.tell() == 0:
+                file.write("datetime,therm0,therm1\n")
+            while True:
+                now = time.localtime()
+                therm0 = await context.interface.get_thermocouple_temperature_0()
+                therm1 = await context.interface.get_thermocouple_temperature_1()
+                file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S', now)},{therm0:.3f},{therm1:.3f}\n")
+                file.flush()
+                try:
+                    await asyncio.wait_for(stop_event.wait(), timeout=1.0)
+                    return
+                except asyncio.TimeoutError:
+                    continue
+    except Exception:
+        _LOGGER.warning("Temp log failed", exc_info=True)
+
+
+async def _start_temp_log(context: Execute.Context, data: Data) -> None:
+    file_path = _temp_log_path(context)
+    if file_path is None:
+        _LOGGER.warning("No output file set; skipping temperature logging.")
+        return
+    data.temp_log_stop = asyncio.Event()
+    await context.schedule.start_background(
+        _log_temperatures(context, data.temp_log_stop, file_path)
+    )
 
 
 class Sample(Task):
@@ -264,7 +313,7 @@ class Sample(Task):
             CheckSampleTemperature(context, sample_post_origin + 69),
 
             #abort_after_cycle,
-            CycleEnd(context, context.origin + CYCLE_SECONDS),
+            CycleEnd(context, context.origin + CYCLE_SECONDS, data),
         ]
         if context.origin > 0.0:
             result += [

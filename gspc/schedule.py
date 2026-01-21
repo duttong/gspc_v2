@@ -123,11 +123,13 @@ class Execute:
 
     class Context:
         """The context identifier for a task scheduled for execution"""
-        def __init__(self, interface: Interface, schedule: 'Execute', origin: float, task_index: int):
+        def __init__(self, interface: Interface, schedule: 'Execute', origin: float,
+                     task_index: int, task_name: typing.Optional[str] = None):
             self.interface = interface
             self.schedule = schedule
             self.origin = origin
             self.task_index = task_index
+            self.task_name = task_name
             self.task_started: bool = False
             self.task_completed: bool = False
             self.task_activated: bool = False
@@ -138,8 +140,10 @@ class Execute:
             super().__init__(*args, **kwargs)
             self.message = message
 
-    def __init__(self, task_sequence: typing.Sequence[Task]):
+    def __init__(self, task_sequence: typing.Sequence[Task],
+                 task_names: typing.Optional[typing.Sequence[str]] = None):
         self._tasks = task_sequence
+        self._task_names = list(task_names) if task_names is not None else None
         self._background_tasks: typing.Set[asyncio.Task] = set()
         self._break_event = None
         self._aborted = False
@@ -191,7 +195,10 @@ class Execute:
         origin = 0.0
         for i in range(len(self._tasks)):
             task = self._tasks[i]
-            context = self.Context(interface, self, origin, i)
+            task_name = None
+            if self._task_names is not None and i < len(self._task_names):
+                task_name = self._task_names[i]
+            context = self.Context(interface, self, origin, i, task_name)
             self.contexts.append(context)
             add = task.schedule(context)
             run.extend(add)

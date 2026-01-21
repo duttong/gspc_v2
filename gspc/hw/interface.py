@@ -32,6 +32,16 @@ class Interface(ABC):
         pass
 
     @abstractmethod
+    async def get_thermocouple_temperature_0(self) -> float:
+        """Read thermocouple 0 temperature"""
+        pass
+
+    @abstractmethod
+    async def get_thermocouple_temperature_1(self) -> float:
+        """Read thermocouple 1 temperature"""
+        pass
+
+    @abstractmethod
     async def set_cryogen(self, enable: bool):
         """Set the cryogen control state"""
         pass
