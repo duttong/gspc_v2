@@ -99,6 +99,8 @@ class LabJack:
             config["B"] = cjc_source
         if cjc_address is not None:
             config["C"] = cjc_address
+        if units is None:
+            units = getattr(ljm.constants, "tempC", 1)
         if units is not None:
             config["D"] = units
         await self.configure_ain_ef(address, ef_index, config=config)
@@ -204,7 +206,7 @@ if __name__ == '__main__':
     async def therm():
         for _ in range(10):
             temp = await t7.read_therm(int(options.therm))
-            print(f'Thermocouple AIN{options.therm}: {temp:.2f} °F)')
+            print(f'Thermocouple AIN{options.therm}: {temp:.2f} °C)')
             await asyncio.sleep(1)
         await t7.disconnect()
         loop.stop()
