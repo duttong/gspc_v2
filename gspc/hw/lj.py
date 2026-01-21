@@ -45,6 +45,64 @@ class LabJack:
 
         return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
 
+    async def read_therm(self, address: int, *, ef_read: str = "A") -> float:
+        """Read a thermistor/thermocouple value via AIN EF (e.g., AIN#_EF_READ_A)."""
+        ef_read = ef_read.upper()
+        if ef_read not in {"A", "B"}:
+            raise ValueError("ef_read must be 'A' or 'B'")
+
+        async def execute_read() -> float:
+            cmd = f'AIN{address}_EF_READ_{ef_read}'
+            result = ljm.eReadName(self._handle, cmd)
+            _LOGGER.debug(f'Read LabJack therm value {cmd}: {result}')
+            return result
+
+        return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_read(), self._loop))
+
+    async def configure_ain_ef(
+        self,
+        address: int,
+        ef_index: int,
+        *,
+        config: typing.Optional[typing.Dict[str, float]] = None,
+    ) -> None:
+        """Configure AIN EF for a channel using EF index and optional config A-F values."""
+        config = config or {}
+        names = [f'AIN{address}_EF_INDEX']
+        values = [ef_index]
+        for key, value in sorted(config.items()):
+            key = key.upper()
+            if key not in {"A", "B", "C", "D", "E", "F"}:
+                raise ValueError("EF config keys must be A-F")
+            names.append(f'AIN{address}_EF_CONFIG_{key}')
+            values.append(value)
+
+        async def execute_write() -> None:
+            ljm.eWriteNames(self._handle, len(names), names, values)
+            _LOGGER.debug(
+                f'Configured LabJack AIN{address} EF index {ef_index} with {config}')
+
+        return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(execute_write(), self._loop))
+
+    async def configure_thermocouple_type_e(
+        self,
+        address: int,
+        *,
+        ef_index: int = 22,
+        cjc_source: typing.Optional[int] = None,
+        cjc_address: typing.Optional[int] = None,
+        units: typing.Optional[int] = None,
+    ) -> None:
+        """Configure AIN EF for a Type E thermocouple (defaults match T-series)."""
+        config = {"A": ljm.constants.ttE}
+        if cjc_source is not None:
+            config["B"] = cjc_source
+        if cjc_address is not None:
+            config["C"] = cjc_address
+        if units is not None:
+            config["D"] = units
+        await self.configure_ain_ef(address, ef_index, config=config)
+
     async def write_analog(self, address: int, value: float) -> None:
         """Set a single analog channel."""
 
@@ -111,6 +169,8 @@ if __name__ == '__main__':
                      dest='low', help='Set digital address to low (0)')
     opt.add_argument('--tog', action='store', metavar='CHANNEL',
                      dest='tog', help='Toggle digital address from low to high to low for one second')
+    opt.add_argument('--therm', action='store', metavar='AIN',
+                     dest='therm', help='Read thermocouple temperature from AIN for 10 seconds')
 
     options = opt.parse_args()
 
@@ -141,7 +201,17 @@ if __name__ == '__main__':
             print(f'Read value: {ain}')
             await asyncio.sleep(1)
 
+    async def therm():
+        for _ in range(10):
+            temp = await t7.read_therm(int(options.therm))
+            print(f'Thermocouple AIN{options.therm}: {temp}')
+            await asyncio.sleep(1)
+        await t7.disconnect()
+        loop.stop()
 
     t1 = loop.create_task(dout())
-    t2 = loop.create_task(ain())
+    if options.therm is not None:
+        t2 = loop.create_task(therm())
+    else:
+        t2 = loop.create_task(ain())
     loop.run_forever()

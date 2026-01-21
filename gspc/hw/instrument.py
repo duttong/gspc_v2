@@ -21,6 +21,7 @@ def _clamp(x, minimum, maximum):
 
 class Instrument(Interface):
     # AIN_PRESSURE = 10
+    AIN_THERMOCOUPLE = 0
     AIN_OVEN_TEMPERATURE = 11
     AIN_FLOW = 12
 
@@ -97,6 +98,9 @@ class Instrument(Interface):
 
     async def get_oven_temperature_signal(self) -> float:
         return await self._lj.read_analog(self.AIN_OVEN_TEMPERATURE)
+
+    async def get_thermocouple_temperature(self) -> float:
+        return await self._lj.read_therm(self.AIN_THERMOCOUPLE)
 
     async def set_cryogen(self, enable: bool):
         await self._lj.write_digital(self.DOT_LN2_FLOW_TO_CRYO_TRAP, enable)
