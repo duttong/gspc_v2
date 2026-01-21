@@ -204,7 +204,7 @@ if __name__ == '__main__':
     async def therm():
         for _ in range(10):
             temp = await t7.read_therm(int(options.therm))
-            print(f'Thermocouple AIN{options.therm}: {temp}')
+            print(f'Thermocouple AIN{options.therm}: {temp:.2f} °F)')
             await asyncio.sleep(1)
         await t7.disconnect()
         loop.stop()
