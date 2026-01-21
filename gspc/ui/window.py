@@ -331,7 +331,7 @@ class Main(QtWidgets.QMainWindow):
         inputs_layout.addRow("Therm0 (C):", self.thermocouple_0)
 
         self.thermocouple_1 = QtWidgets.QLabel(inputs_pane)
-        self.thermocouple_1.setText("0000.00")
+        self.thermocouple_1.setText("NA")
         self.thermocouple_1.setFont(monospace)
         inputs_layout.addRow("Therm1 (C):", self.thermocouple_1)
 

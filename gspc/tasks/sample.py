@@ -226,6 +226,7 @@ def _temp_log_path(context: Execute.Context) -> typing.Optional[str]:
 
 
 async def _log_temperatures(context: Execute.Context, stop_event: asyncio.Event, file_path: str) -> None:
+    therm1_enabled = True
     try:
         with open(file_path, "a+") as file:
             if file.tell() == 0:
@@ -233,8 +234,15 @@ async def _log_temperatures(context: Execute.Context, stop_event: asyncio.Event,
             while True:
                 now = time.localtime()
                 therm0 = await context.interface.get_thermocouple_temperature_0()
-                therm1 = await context.interface.get_thermocouple_temperature_1()
-                file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S', now)},{therm0:.3f},{therm1:.3f}\n")
+                therm1 = None
+                if therm1_enabled:
+                    try:
+                        therm1 = await context.interface.get_thermocouple_temperature_1()
+                    except Exception:
+                        therm1_enabled = False
+                        _LOGGER.warning("Therm1 read failed; disabling Therm1 logging.", exc_info=True)
+                therm1_text = f"{therm1:.3f}" if therm1 is not None else "NA"
+                file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S', now)},{therm0:.3f},{therm1_text}\n")
                 file.flush()
                 try:
                     await asyncio.wait_for(stop_event.wait(), timeout=1.0)

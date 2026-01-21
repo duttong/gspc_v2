@@ -58,10 +58,6 @@ class Window(Main):
             lambda value: self.thermocouple_0.setText(f"{value:8.3f}")
         )))
         self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
-            self._interface.get_thermocouple_temperature_1,
-            lambda value: self.thermocouple_1.setText(f"{value:8.3f}")
-        )))
-        self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
             self._interface.get_oven_temperature_signal,
             lambda value: self.oven_temperature.setText(f"{value:8.3f}")
         )))
