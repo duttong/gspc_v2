@@ -1,0 +1,10 @@
+.idea
+/.spyproject/
+AFLOW26.TXT
+__pycache__/
+/old/*
+/fe3/*
+/venv
+/*.egg-info
+/*.pytest*
+.vs

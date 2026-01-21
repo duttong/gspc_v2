@@ -1,0 +1,1 @@
+claimed_serial_ports = set()
