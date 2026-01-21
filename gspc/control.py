@@ -4,11 +4,12 @@ import time
 import logging
 import enum
 import threading
+import os
 from gspc.ui.window import Main
 from gspc.schedule import Execute, Task, known_tasks
 from gspc.hw.interface import Interface
 from gspc.util import call_on_ui, LogHandler, background_task
-from gspc.output import set_output_name
+from gspc.output import set_output_name, CycleData
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 if typing.TYPE_CHECKING:
@@ -28,6 +29,9 @@ class Window(Main):
         self._loop = loop
         self._interface = interface
         self._active_schedule: typing.Optional["_Schedule"] = None
+        self._temp_log_stop: typing.Optional[asyncio.Event] = None
+        self._temp_log_task: typing.Optional[asyncio.Task] = None
+        self._temp_log_enabled = False
 
         for name, task in known_tasks.items():
             self.add_manual_task(name, lambda task=task, name=name: self._run_manual_task(task, name))
@@ -132,11 +136,77 @@ class Window(Main):
             await Window._call_ui_with_result(reader, ui_update)
             await asyncio.sleep(interval)
 
+    def _temp_log_path(self) -> typing.Optional[str]:
+        data_file = CycleData.current_file_name()
+        if not data_file:
+            _LOGGER.warning("No output file set; skipping temperature logging.")
+            return None
+        output_dir = os.path.dirname(data_file)
+        timestamp = time.strftime("%Y-%m-%d-%H%M%S", time.localtime())
+        return os.path.join(output_dir, f"temps_{timestamp}.csv")
+
+    async def _log_temperatures(self, stop_event: asyncio.Event, file_path: str) -> None:
+        therm1_enabled = True
+        try:
+            with open(file_path, "a+") as file:
+                if file.tell() == 0:
+                    file.write("datetime,therm0,therm1\n")
+                while True:
+                    now = time.localtime()
+                    therm0 = await self._interface.get_thermocouple_temperature_0()
+                    therm1 = None
+                    if therm1_enabled:
+                        try:
+                            therm1 = await self._interface.get_thermocouple_temperature_1()
+                        except Exception:
+                            therm1_enabled = False
+                            _LOGGER.warning("Therm1 read failed; disabling Therm1 logging.", exc_info=True)
+                    therm1_text = f"{therm1:.3f}" if therm1 is not None else "NA"
+                    file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S', now)},{therm0:.3f},{therm1_text}\n")
+                    file.flush()
+                    try:
+                        await asyncio.wait_for(stop_event.wait(), timeout=1.0)
+                        return
+                    except asyncio.TimeoutError:
+                        continue
+        except Exception:
+            _LOGGER.warning("Temp log failed", exc_info=True)
+
+    async def _start_temp_log(self) -> None:
+        if self._temp_log_stop is not None:
+            return
+        file_path = self._temp_log_path()
+        if file_path is None:
+            return
+        self._temp_log_stop = asyncio.Event()
+        self._temp_log_task = background_task(
+            self._log_temperatures(self._temp_log_stop, file_path)
+        )
+
+    async def _stop_temp_log(self) -> None:
+        if self._temp_log_stop is None:
+            return
+        self._temp_log_stop.set()
+        if self._temp_log_task is not None:
+            try:
+                await self._temp_log_task
+            except Exception:
+                _LOGGER.warning("Temp log task failed", exc_info=True)
+        self._temp_log_stop = None
+        self._temp_log_task = None
+
     async def _execute_schedule(self):
         abort_message = None
-        if not await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
-                self._active_schedule.execute(self._interface), self._loop)):
-            abort_message = self._active_schedule.abort_message
+        if self._temp_log_enabled:
+            await self._start_temp_log()
+        try:
+            if not await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
+                    self._active_schedule.execute(self._interface), self._loop)):
+                abort_message = self._active_schedule.abort_message
+        finally:
+            if self._temp_log_enabled:
+                await self._stop_temp_log()
+            self._temp_log_enabled = False
 
         def message_gui():
             self.set_stopped()
@@ -153,6 +223,7 @@ class Window(Main):
         if self._active_schedule is not None:
             return
         self._active_schedule = _Schedule([task], self, task_names=[name])
+        self._temp_log_enabled = False
         self.set_running(time.time())
         self.current_task.setText(name)
         self._loop.call_soon_threadsafe(lambda: background_task(self._execute_schedule()))
@@ -163,6 +234,7 @@ class Window(Main):
             return
 
         self._active_schedule = _Schedule(tasks, self, task_names=task_names)
+        self._temp_log_enabled = True
         self.set_running(time.time())
         self._loop.call_soon_threadsafe(lambda: background_task(self._execute_schedule()))
 
