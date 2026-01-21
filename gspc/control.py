@@ -62,6 +62,10 @@ class Window(Main):
             lambda value: self.thermocouple_0.setText(f"{value:8.3f}")
         )))
         self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
+            self._interface.get_thermocouple_temperature_1,
+            lambda value: self.thermocouple_1.setText(f"{value:8.3f}")
+        )))
+        self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
             self._interface.get_oven_temperature_signal,
             lambda value: self.oven_temperature.setText(f"{value:8.3f}")
         )))
@@ -133,7 +137,10 @@ class Window(Main):
                                      ui_update: typing.Callable[[typing.Any], None],
                                      interval: float = 1.0) -> None:
         while True:
-            await Window._call_ui_with_result(reader, ui_update)
+            try:
+                await Window._call_ui_with_result(reader, ui_update)
+            except Exception:
+                _LOGGER.warning("UI update failed", exc_info=True)
             await asyncio.sleep(interval)
 
     def _temp_log_path(self) -> typing.Optional[str]:
@@ -146,23 +153,25 @@ class Window(Main):
         return os.path.join(output_dir, f"temps_{timestamp}.csv")
 
     async def _log_temperatures(self, stop_event: asyncio.Event, file_path: str) -> None:
-        therm1_enabled = True
         try:
             with open(file_path, "a+") as file:
                 if file.tell() == 0:
                     file.write("datetime,therm0,therm1\n")
                 while True:
                     now = time.localtime()
-                    therm0 = await self._interface.get_thermocouple_temperature_0()
+                    therm0 = None
+                    try:
+                        therm0 = await self._interface.get_thermocouple_temperature_0()
+                    except Exception:
+                        _LOGGER.warning("Therm0 read failed; writing NA.", exc_info=True)
                     therm1 = None
-                    if therm1_enabled:
-                        try:
-                            therm1 = await self._interface.get_thermocouple_temperature_1()
-                        except Exception:
-                            therm1_enabled = False
-                            _LOGGER.warning("Therm1 read failed; disabling Therm1 logging.", exc_info=True)
+                    try:
+                        therm1 = await self._interface.get_thermocouple_temperature_1()
+                    except Exception:
+                        _LOGGER.warning("Therm1 read failed; writing NA.", exc_info=True)
+                    therm0_text = f"{therm0:.3f}" if therm0 is not None else "NA"
                     therm1_text = f"{therm1:.3f}" if therm1 is not None else "NA"
-                    file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S', now)},{therm0:.3f},{therm1_text}\n")
+                    file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S', now)},{therm0_text},{therm1_text}\n")
                     file.flush()
                     try:
                         await asyncio.wait_for(stop_event.wait(), timeout=1.0)
