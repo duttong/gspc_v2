@@ -23,6 +23,7 @@ class Window(Main):
     """The main control window"""
 
     _schedule_complete = QtCore.pyqtSignal()
+    _THERMOCOUPLE_POLL_SECONDS = 10.0
 
     def __init__(self, loop: asyncio.AbstractEventLoop, interface: Interface, enable_pfp: bool = True):
         Main.__init__(self, enable_pfp=enable_pfp)
@@ -59,11 +60,13 @@ class Window(Main):
         )))
         self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
             self._interface.get_thermocouple_temperature_0,
-            lambda value: self.thermocouple_0.setText(f"{value:8.3f}")
+            lambda value: self.thermocouple_0.setText(f"{value:8.3f}"),
+            interval=self._THERMOCOUPLE_POLL_SECONDS
         )))
         self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
             self._interface.get_thermocouple_temperature_1,
-            lambda value: self.thermocouple_1.setText(f"{value:8.3f}")
+            lambda value: self.thermocouple_1.setText(f"{value:8.3f}"),
+            interval=self._THERMOCOUPLE_POLL_SECONDS
         )))
         self._loop.call_soon_threadsafe(lambda: background_task(self._repeat_ui_with_result(
             self._interface.get_oven_temperature_signal,
@@ -174,7 +177,7 @@ class Window(Main):
                     file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S', now)},{therm0_text},{therm1_text}\n")
                     file.flush()
                     try:
-                        await asyncio.wait_for(stop_event.wait(), timeout=1.0)
+                        await asyncio.wait_for(stop_event.wait(), timeout=self._THERMOCOUPLE_POLL_SECONDS)
                         return
                     except asyncio.TimeoutError:
                         continue
