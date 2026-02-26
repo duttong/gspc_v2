@@ -13,7 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 
 INITIAL_FLOW = 3
 #Changed sample_flow from 7.2 to 7.05 on 11/18/25 to help with high pressure flask flow control during sampling 
-SAMPLE_FLOW = 7.05
+#Changed sample_flow from 7.05 to 7.1 on 02/26/26 to help with high pressure flask flow control during sampling 
+SAMPLE_FLOW = 7.10
 UPPER_SAMPLE_FLOW = 1.3
 LOWER_SAMPLE_FLOW = 0.5
 LOW_FLOW_THRESHOLD = 0.2
