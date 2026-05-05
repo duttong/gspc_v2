@@ -9,7 +9,7 @@ from gspc.ui.window import Main
 from gspc.schedule import Execute, Task, known_tasks
 from gspc.hw.interface import Interface
 from gspc.util import call_on_ui, LogHandler, background_task
-from gspc.output import set_output_name, CycleData
+from gspc.output import set_output_name, CycleData, set_lock_alert_handler
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 if typing.TYPE_CHECKING:
@@ -113,6 +113,14 @@ class Window(Main):
 
         self.restore_open_files()
         self.restore_output_target()
+
+        set_lock_alert_handler(self._on_output_lock_alert)
+
+    def _on_output_lock_alert(self, message: str, recovered: bool) -> None:
+        title = "Output File" if recovered else "Output File In Use"
+        show = (lambda: QtWidgets.QMessageBox.information(self, title, message)) if recovered \
+            else (lambda: QtWidgets.QMessageBox.warning(self, title, message))
+        call_on_ui(show)
 
     def _hook_interface(self, method: str, hook: typing.Callable):
         original = getattr(self._interface, method)
