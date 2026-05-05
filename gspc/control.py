@@ -118,9 +118,8 @@ class Window(Main):
 
     def _on_output_lock_alert(self, message: str, recovered: bool) -> None:
         title = "Output File" if recovered else "Output File In Use"
-        show = (lambda: QtWidgets.QMessageBox.information(self, title, message)) if recovered \
-            else (lambda: QtWidgets.QMessageBox.warning(self, title, message))
-        call_on_ui(show)
+        box_fn = QtWidgets.QMessageBox.information if recovered else QtWidgets.QMessageBox.warning
+        call_on_ui(lambda: box_fn(self, title, message))
 
     def _hook_interface(self, method: str, hook: typing.Callable):
         original = getattr(self._interface, method)
