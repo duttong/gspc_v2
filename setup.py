@@ -31,7 +31,7 @@ with open(os.path.join(here, 'requirements.txt')) as requirements_txt:
     REQUIRES = requirements_txt.read().splitlines()
 
 setup(
-    nname=PROJECT_PACKAGE_NAME,
+    name=PROJECT_PACKAGE_NAME,
     version=const.__version__,
     license=PROJECT_LICENSE,
     url=GITLAB_URL,
